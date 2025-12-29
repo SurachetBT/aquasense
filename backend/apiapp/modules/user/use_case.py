@@ -21,7 +21,7 @@ class UserUseCase(BaseUseCase[User, UserRepository, UserResponse]):
     def __init__(self, repository: UserRepository):
         super().__init__(repository, UserResponse)
 
-    async def register_user(self, user_data: CreateUser) -> User:
+    async def create_user(self, user_data: CreateUser) -> User:
         """Register a new user with complete business logic"""
 
         # Business validation: Check username uniqueness

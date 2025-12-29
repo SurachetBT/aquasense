@@ -86,13 +86,13 @@ def create(
         confirmation_prompt=True,
     ),
     docker: bool = typer.Option(
-        False, "--docker", help="Use docker MongoDB URI (mongodb://mongodb/appdb)"
+        False, "--docker", help="Use docker MongoDB URI (mongodb://mongodb/aquasense)"
     ),
 ):
     """Create an admin user in the database"""
 
     if docker:
-        database_uri = "mongodb://mongodb/appdb"
+        database_uri = "mongodb://mongodb/aquasense"
 
     typer.secho("🔧 Initializing admin user...", fg=typer.colors.CYAN, bold=True)
     typer.echo(f"📍 Database URI: {database_uri}")

@@ -44,8 +44,8 @@ async def get_user_list(
     status_code=status.HTTP_201_CREATED,
     response_model=UserResponse,
 )
-async def register_user(
-    user_data: CreateUser, use_case: UserUseCase = Depends(get_user_use_case)
+async def create_user(
+    user_data: CreateUser, use_case: UserUseCase = Depends(get_user_use_case),current_user: dict = Depends(get_current_user),
 ) -> UserResponse:
     """
     Register a new user.
@@ -53,7 +53,7 @@ async def register_user(
     """
     try:
         # ✅ ใช้ base create method ที่ return UserResponse
-        return await use_case.create(user_data)
+        return await use_case.create_user(user_data)
     except (DuplicatedError, BusinessLogicError, ValidationError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

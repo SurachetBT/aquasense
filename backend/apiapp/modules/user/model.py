@@ -1,3 +1,4 @@
+
 """
 User Beanie document model
 """
