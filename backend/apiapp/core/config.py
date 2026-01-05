@@ -24,11 +24,16 @@ class Settings(BaseSettings):
     OPENAPI_PREFIX: str = ""
     OPENAPI_URL: str = "/openapi.json"
     REDOC_URL: str = "/redoc"
-    TITLE: str = "IMPs FastAPI"
+    TITLE: str = "AquaSense API"
     VERSION: str = "0.1.0"
 
     DATABASE_URI: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    MQTT_BROKER: str = "broker.hivemq.com"
+    MQTT_PORT: int = 1883
+    MQTT_USERNAME: str = ""
+    MQTT_PASSWORD: str = ""
 
     # auth
     SECRET_KEY: str = "secret_key"
