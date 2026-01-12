@@ -73,7 +73,7 @@ const Dashboard = () => {
 
     const interval = setInterval(() => {
       fetchLatestData();
-      // fetchHistory(selectedGraph); // ถ้าอยากให้กราฟขยับตลอดให้เปิดบรรทัดนี้
+      fetchHistory(selectedGraph); // ถ้าอยากให้กราฟขยับตลอดให้เปิดบรรทัดนี้
     }, 3000); // ทุก 3 วินาที
 
     return () => clearInterval(interval);
