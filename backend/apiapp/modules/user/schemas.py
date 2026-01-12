@@ -65,6 +65,7 @@ class CreateUser(BaseModel):
     )
     role: str = Field(
         default=UserRole.USER.value, description="Role assigned to the user"
+
     )
 
     @field_validator("username")
@@ -148,3 +149,10 @@ class UpdateUserPassword(BaseModel):
         if self.new_password != self.confirm_new_password:
             raise ValidationError("New passwords do not match")
         return self
+    
+    
+class ResetPasswordRequest(BaseModel):
+    """Schema for admin resetting user password"""
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="New password for reset"
+    )

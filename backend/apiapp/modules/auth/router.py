@@ -3,12 +3,14 @@ from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
     OAuth2PasswordRequestForm,
+    
 )
+from apiapp.core.security import reusable_oauth2
 import typing
-
+from .model import BlacklistedToken
 # Import schemas
 from . import schemas
-from .schemas import GetAccessTokenResponse
+from .schemas import GetAccessTokenResponse, LogoutResponse   
 
 from ...core import security, exceptions
 from ...core.config import settings
@@ -73,3 +75,13 @@ async def refresh_token(
         )
     except (exceptions.BusinessLogicError, exceptions.ValidationError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+@router.post("/logout", response_model=schemas.LogoutResponse)
+# แก้ตรง Depends ให้เรียกใช้ reusable_oauth2
+async def logout(token: str = Depends(reusable_oauth2)):
+    exists = await BlacklistedToken.find_one(BlacklistedToken.token == token)
+    if exists:
+        return {"message": "Already logged out"}
+
+    await BlacklistedToken(token=token).create()
+    return {"message": "Logout successful"}

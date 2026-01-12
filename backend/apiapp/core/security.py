@@ -11,7 +11,7 @@ from .config import settings
 from ..modules.user import model
 from .exceptions import ValidationError
 from ..modules.user.repository import UserRepository, get_user_repository
-
+from ..modules.auth.model import BlacklistedToken
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/v1/auth/token")
 repository: UserRepository = Depends(get_user_repository)
@@ -106,22 +106,52 @@ class JWTHandler:
         return new_access_token
 
 
-async def get_current_user(token: str = Depends(reusable_oauth2)) -> model.User:
+async def get_current_user(
+    token: str = Depends(reusable_oauth2),
+    repository: UserRepository = Depends(get_user_repository),
+) -> model.User:
+    
+    is_blacklisted = await BlacklistedToken.find_one(BlacklistedToken.token == token)
+    if is_blacklisted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked (Logged out)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
+        # 1. Decode Token
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[ALGORITHM]
         )
+        # 2. ดึง User ID (sub) ออกมาจาก Payload
+        user_id: str = payload.get("sub")
+        
+        if user_id is None:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Could not validate credentials",
+            )
+            
     except (jwt.JWTError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
 
-    user = await repository.find_one(id=payload.get("sub"))
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    # 3. (สำคัญ) เอา ID ไปค้นหาใน Database ผ่าน Repository
+    # สมมติว่า repository ของคุณมีเมธอด get_by_id หรือ get
+    user = await repository.find_by_id(user_id)
 
+    # 4. ถ้าหาไม่เจอ (User ถูกลบไปแล้ว หรือ Token มั่วมา)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found"
+        )
+
+    # 5. ส่ง User ตัวจริงกลับไป
+    return user
 
 jwt_handler = JWTHandler(settings.SECRET_KEY, ALGORITHM)
 

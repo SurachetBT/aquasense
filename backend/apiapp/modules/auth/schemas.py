@@ -52,3 +52,6 @@ class RefreshToken(BaseSchema):
 class GetAccessTokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+class LogoutResponse(BaseModel):
+    message: str

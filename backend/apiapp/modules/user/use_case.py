@@ -10,7 +10,7 @@ from fastapi import Depends
 
 from .model import User
 from .repository import UserRepository, get_user_repository
-from .schemas import CreateUser, UpdateUser, UserResponse
+from .schemas import CreateUser, UpdateUser, UserResponse, UserRole
 from ...core.base_use_case import BaseUseCase
 from ...core.exceptions import ValidationError, DuplicatedError, BusinessLogicError
 
@@ -40,11 +40,12 @@ class UserUseCase(BaseUseCase[User, UserRepository, UserResponse]):
 
         # Business logic: Set default values and timestamps
         user_dict = user_data.model_dump(exclude={"password", "confirm_password"})
+        role_to_save = getattr(user_data, 'role', UserRole.USER.value)
         user_dict.update(
             {
                 "hashed_password": hashed_password,
                 "is_active": True,
-                "role": "user",  # Default role
+                "role": role_to_save,  
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
             }
@@ -100,10 +101,52 @@ class UserUseCase(BaseUseCase[User, UserRepository, UserResponse]):
             from werkzeug.security import generate_password_hash
 
             update_data["hashed_password"] = generate_password_hash(password)
-            update_data["password_changed_at"] = datetime.now(timezone.utc)
 
         # อัปเดตข้อมูลอื่นๆ ผ่าน base method (จะ return UserResponse)
         return await self.update(user_id, update_data)
+        
+    
+    #Delete User
+    async def delete_user(self, user_id: str) -> bool:
+        """
+        Delete user by ID (Hard Delete)
+        Returns True if deleted successfully, False if not found.
+        """
+        # ตรวจสอบว่า user มีอยู่จริงไหมก่อนลบ (Optional แต่แนะนำเพื่อความชัวร์)
+        existing_user = await self.repository.find_by_id(user_id)
+        if not existing_user:
+            return False
+
+        # เรียกใช้ delete method ของ BaseUseCase หรือ Repository
+        # สมมติว่า BaseUseCase มี method delete(id) หรือ repository มี delete(id)
+        # ถ้า BaseUseCase ไม่มี ให้เรียก self.repository.delete(user_id)
+        try:
+            await self.repository.delete(user_id)
+            return True
+        except Exception:
+            # กรณีเกิด Error ตอนลบ (เช่น ID ผิด format หรือ Database error)
+            return False
+        
+    # ฟังก์ชัน Reset Password    
+    async def reset_password(self, user_id: str, new_password: str) -> bool:
+        """
+        Admin Reset Password for user
+        """
+        existing_user = await self.repository.find_by_id(user_id)
+        if not existing_user:
+            return False
+
+        from werkzeug.security import generate_password_hash
+
+        # เตรียมข้อมูลสำหรับอัปเดต
+        update_data = {
+            "hashed_password": generate_password_hash(new_password),
+            "updated_at": datetime.now(timezone.utc),
+        }
+
+        # เรียก repository เพื่ออัปเดตข้อมูล
+        await self.repository.update(existing_user.id, update_data)
+        return True    
 
 
 # Dependency providers
