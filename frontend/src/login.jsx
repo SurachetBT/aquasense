@@ -12,7 +12,7 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  // 2. ฟังก์ชันจัดการการเปลี่ยนแปลงใน Input
+  // ✅ เพิ่มฟังก์ชันนี้กลับเข้ามาครับ
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({
@@ -21,47 +21,58 @@ const Login = () => {
     }));
   };
 
-  // 3. ฟังก์ชันส่งข้อมูลไปยัง API
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // 1. เตรียมข้อมูลแบบ x-www-form-urlencoded เพื่อให้เข้ากับ OAuth2PasswordRequestForm
     const formData = new URLSearchParams();
     formData.append('username', credentials.username);
     formData.append('password', credentials.password);
 
     try {
-      // 2. แก้ไข URL ให้ตรงกับ APIRouter prefix และ endpoint
-      // ตัวอย่าง: http://localhost:8000/v1/auth/login
-      const response = await fetch('http://localhost:9000/v1/auth/login', {
+      // --- STEP 1: Login เพื่อขอ Token ---
+      const loginRes = await fetch('http://localhost:9000/v1/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData,
       });
 
-      const data = await response.json();
+      const loginData = await loginRes.json();
 
-      if (response.ok) {
-        // 3. เก็บข้อมูลตามที่ schemas.Token ของคุณส่งกลับมา
-        // ปกติ OAuth2 จะส่ง access_token และ refresh_token
-        localStorage.setItem('accessToken', data.access_token);
-        
-        // ถ้า API ส่งข้อมูล user กลับมาด้วย ให้เก็บไว้ (ถ้าไม่มีให้ข้ามบรรทัดนี้)
-        if (data.user) {
-          localStorage.setItem('userData', JSON.stringify(data.user));
-        }
-
-        navigate('/dashboard');
-      } else {
-        // ดึง Error จาก HTTPException ที่คุณ raise ไว้
-        setError(data.detail || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
+      if (!loginRes.ok) {
+        throw new Error(loginData.detail || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
       }
+
+      // ได้ Token มาแล้ว เก็บเลย
+      const token = loginData.access_token;
+      localStorage.setItem('accessToken', token);
+
+      // --- STEP 2: ใช้ Token ไปดึงข้อมูล User ---
+      try {
+        // ⚠️ เช็ค URL ให้ชัวร์ว่ามี /v1 หรือไม่
+        const userRes = await fetch('http://localhost:9000/v1/users/me', { 
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}` 
+          }
+        });
+
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          localStorage.setItem('userData', JSON.stringify(userData));
+        } else {
+            console.warn("ดึงข้อมูล User ไม่สำเร็จ (อาจจะไม่มี endpoint นี้ หรือ Token ผิด)");
+        }
+      } catch (userErr) {
+        console.error("Error fetching user data:", userErr);
+      }
+
+      // --- STEP 3: ไปหน้า Dashboard ---
+      navigate('/dashboard');
+
     } catch (err) {
-      setError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่ภายหลัง');
+      setError(err.message || 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +104,7 @@ const handleSubmit = async (e) => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                 placeholder="กรอกชื่อผู้ใช้งาน"
                 value={credentials.username}
-                onChange={handleChange}
+                onChange={handleChange} 
               />
             </div>
 

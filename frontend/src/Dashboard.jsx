@@ -1,46 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // ✅ 1. เพิ่ม useNavigate
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Thermometer, Droplets, Activity, Skull, Power, RefreshCw } from 'lucide-react';
+import { Thermometer, Droplets, Activity, Skull, Power, RefreshCw, AlertTriangle, LogOut } from 'lucide-react'; // ✅ 2. เพิ่ม icon LogOut
 
-// ✅ Config: ตั้งค่า Base URL ตามที่คุณระบุ (Port 9000)
 const API_BASE_URL = "http://localhost:9000"; 
 
 const Dashboard = () => {
-  // --- State เก็บข้อมูล ---
-  const [sensors, setSensors] = useState({
-    temperature: 0,
-    ph: 0,
-    turbidity: 0,
-    nh3: 0
-  });
+  const navigate = useNavigate(); // ✅ 3. เรียกใช้ Hook
   
-  const [historyData, setHistoryData] = useState([]); // สำหรับกราฟ
-  const [selectedGraph, setSelectedGraph] = useState('temperature'); // เลือกดูกราฟอะไร
+  const [sensors, setSensors] = useState({ temperature: 0, ph: 0, turbidity: 0, nh3: 0 });
+  const [analysis, setAnalysis] = useState(null);
+  const [historyData, setHistoryData] = useState([]);
+  const [selectedGraph, setSelectedGraph] = useState('temperature');
   const [isConnected, setIsConnected] = useState(false);
   
-  // State สำหรับสถานะปั๊ม (UI)
-  const [pumpStatus, setPumpStatus] = useState({ pump1: false, pump2: false });
+  // State สำหรับ pump และ servo
+  const [deviceStatus, setDeviceStatus] = useState({ 
+    pump1: false, 
+    pump2: false,
+    servo1: false,
+    servo2: false,
+    servo3: false
+  });
 
-  // --- 1. Function ดึงข้อมูลล่าสุด (Get Latest Value) ---
-  // API คุณแยก path กัน เราจึงใช้ Promise.all ยิงพร้อมกัน 4 ตัวเพื่อให้เร็ว
+  // ✅ 4. ฟังก์ชัน Logout
+  const handleLogout = async () => {
+      // 1. ดึง Token จากเครื่องมาเตรียมไว้
+      const token = localStorage.getItem('accessToken');
+
+      try {
+        if (token) {
+          // 2. ยิงไปบอก Backend ให้ Blacklist Token นี้
+          // (ปรับ URL '/v1/auth/logout' ให้ตรงกับ Router ที่คุณตั้งจริง)
+          await axios.post(`${API_BASE_URL}/v1/auth/logout`, {}, {
+            headers: {
+              'Authorization': `Bearer ${token}` // ต้องส่ง Token ไปใน Header เพื่อให้ reusable_oauth2 รับค่าได้
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Logout failed on server:", error);
+        // ต่อให้ Server Error ก็ไม่ต้องทำอะไร เพราะบรรทัดล่างจะลบ Token ในเครื่องทิ้งอยู่ดี
+      } finally {
+        // 3. ล้างข้อมูลในเครื่องและดีดกลับหน้า Login เสมอ
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('userData');
+        navigate('/login'); 
+      }
+    };
+
   const fetchLatestData = async () => {
     try {
-      const [resTemp, resPh, resTurb, resNh3] = await Promise.all([
+      const [resTemp, resPh, resTurb, resNh3, resAnalysis] = await Promise.all([
         axios.get(`${API_BASE_URL}/sensors/latest/temperature`),
         axios.get(`${API_BASE_URL}/sensors/latest/ph`),
         axios.get(`${API_BASE_URL}/sensors/latest/turbidity`),
-        axios.get(`${API_BASE_URL}/sensors/latest/nh3`)
+        axios.get(`${API_BASE_URL}/sensors/latest/nh3`),
+        axios.get(`${API_BASE_URL}/sensors/status/analysis`) 
       ]);
 
-      // Map ข้อมูลตาม Key ที่ API ส่งกลับมา (temperature, ph, NTU, NH3)
       setSensors({
         temperature: resTemp.data.temperature || 0,
         ph: resPh.data.ph || 0,
-        turbidity: resTurb.data.NTU || 0,   // ระวัง: API ส่ง key "NTU"
-        nh3: resNh3.data.NH3 || 0           // ระวัง: API ส่ง key "NH3"
+        turbidity: resTurb.data.NTU || 0,
+        nh3: resNh3.data.NH3 || 0
       });
 
+      setAnalysis(resAnalysis.data);
       setIsConnected(true);
     } catch (error) {
       console.error("Error fetching latest data:", error);
@@ -48,48 +75,36 @@ const Dashboard = () => {
     }
   };
 
-  // --- 2. Function ดึงข้อมูลกราฟ (Get History) ---
   const fetchHistory = async (type) => {
     try {
-      // API: /sensors/history/{sensor_type}?limit=20
       const res = await axios.get(`${API_BASE_URL}/sensors/history/${type}?limit=20`);
-      
-      // แปลงข้อมูลให้กราฟเข้าใจง่ายๆ
       const formattedData = res.data.map(item => ({
         time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : type)] // เลือก key ให้ถูก
-      })).reverse(); // กลับด้านให้เวลาปัจจุบันอยู่ขวาสุด
-
+        value: item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : type)]
+      })).reverse();
       setHistoryData(formattedData);
     } catch (error) {
       console.error("Error fetching history:", error);
     }
   };
 
-  // --- 3. Initial Load & Polling ---
   useEffect(() => {
-    fetchLatestData(); // ดึงค่าปัจจุบัน
-    fetchHistory(selectedGraph); // ดึงกราฟตัวแรก
-
+    fetchLatestData();
+    fetchHistory(selectedGraph);
     const interval = setInterval(() => {
       fetchLatestData();
-      fetchHistory(selectedGraph); // ถ้าอยากให้กราฟขยับตลอดให้เปิดบรรทัดนี้
-    }, 3000); // ทุก 3 วินาที
-
+      fetchHistory(selectedGraph);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [selectedGraph]); // รันใหม่ถ้าเปลี่ยนประเภทกราฟ
+  }, [selectedGraph]);
 
-  // --- 4. Function สั่งงาน (Control) ---
-  // API: POST /control/{device_name}/{action}
   const handleControl = async (device, action) => {
     try {
       await axios.post(`${API_BASE_URL}/control/${device}/${action}`);
-      console.log(`Success: ${device} -> ${action}`);
-      
-      // อัปเดต UI ถ้าเป็นปั๊ม
-      if (device.includes('pump')) {
-        setPumpStatus(prev => ({ ...prev, [device]: action === 'on' }));
-      }
+      setDeviceStatus(prev => ({
+        ...prev,
+        [device]: action === 'on'
+      }));
     } catch (error) {
       console.error("Control failed:", error);
       alert("สั่งงานไม่สำเร็จ Check Server!");
@@ -97,20 +112,53 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-800">
-      
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans text-slate-800">
       {/* Header */}
-      <header className="flex justify-between items-center mb-8">
+      {/* ✅ 5. ปรับ Header ให้รองรับปุ่ม Logout */}
+      <header className="flex flex-col md:flex-row justify-between items-center mb-6 md:mb-8 gap-4">
         <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
           🌊 AquaSense <span className="text-sm font-normal text-slate-500">Monitor System</span>
         </h1>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          {isConnected ? "ONLINE (Port 9000)" : "OFFLINE"}
+        
+        <div className="flex items-center gap-3">
+          {/* Status Badge */}
+          <div className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border ${isConnected ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            {isConnected ? "ONLINE" : "OFFLINE"}
+          </div>
+
+          {/* Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
         </div>
       </header>
 
-      {/* Sensor Cards Grid */}
+      {/* System Analysis Banner */}
+      {analysis && (
+        <div className={`mb-6 p-4 rounded-xl border flex items-center gap-4 shadow-sm transition-all
+          ${analysis.status === 'normal' || analysis.status === 'good' 
+            ? 'bg-green-50 border-green-200 text-green-800' 
+            : 'bg-orange-50 border-orange-200 text-orange-800'}
+        `}>
+          <div className={`p-3 rounded-full ${analysis.status === 'normal' || analysis.status === 'good' ? 'bg-green-100' : 'bg-orange-100'}`}>
+            {analysis.status === 'normal' || analysis.status === 'good' 
+              ? <Activity size={24} /> 
+              : <AlertTriangle size={24} /> 
+            }
+          </div>
+          <div>
+            <h3 className="font-bold text-lg">System Analysis</h3>
+            <p className="text-sm opacity-90">{analysis.message || JSON.stringify(analysis)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Sensor Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <SensorCard 
           title="Temperature" 
@@ -146,8 +194,8 @@ const Dashboard = () => {
         />
       </div>
 
+      {/* Graph & Control */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Main Graph */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="flex justify-between items-center mb-4">
@@ -163,14 +211,7 @@ const Dashboard = () => {
                 <XAxis dataKey="time" />
                 <YAxis />
                 <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#2563eb" 
-                  strokeWidth={3} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 8 }} 
-                />
+                <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -181,61 +222,67 @@ const Dashboard = () => {
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
             <Power className="w-5 h-5 text-slate-600" /> Control Center
           </h3>
-          
-          {/* Pumps */}
           <div className="space-y-4 mb-8">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Water Pumps</p>
-            <PumpSwitch 
-              name="Pump 1" 
-              isOn={pumpStatus.pump1} 
-              onToggle={(state) => handleControl('pump1', state ? 'on' : 'off')} 
-            />
-            <PumpSwitch 
-              name="Pump 2" 
-              isOn={pumpStatus.pump2} 
-              onToggle={(state) => handleControl('pump2', state ? 'on' : 'off')} 
-            />
+            <PumpSwitch name="Pump 1" isOn={deviceStatus.pump1} onToggle={(state) => handleControl('pump1', state ? 'on' : 'off')} />
+            <PumpSwitch name="Pump 2" isOn={deviceStatus.pump2} onToggle={(state) => handleControl('pump2', state ? 'on' : 'off')} />
           </div>
-
-          {/* Servos */}
           <div className="space-y-4">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Feeders / Servos</p>
             <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map(num => (
-                <button
-                  key={num}
-                  onClick={() => handleControl(`servo${num}`, 'on')}
-                  className="py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-semibold text-sm transition-all active:scale-95 border border-blue-200"
-                >
-                  Servo {num}
-                </button>
-              ))}
+              {[1, 2, 3].map(num => {
+                const deviceName = `servo${num}`;
+                const isOn = deviceStatus[deviceName];
+                
+                return (
+                  <button
+                    key={num}
+                    onClick={() => handleControl(deviceName, isOn ? 'off' : 'on')}
+                    className={`py-3 rounded-lg font-semibold text-sm transition-all active:scale-95 border
+                      ${isOn 
+                        ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' 
+                        : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                      }
+                    `}
+                  >
+                    Servo {num}
+                    <span className="block text-[10px] font-normal opacity-80">{isOn ? 'ON' : 'OFF'}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
 };
 
-// --- Sub Components (เพื่อความสวยงามและ clean code) ---
+const colorMap = {
+  orange: { bg: 'bg-orange-50', border: 'border-orange-500', ring: 'ring-orange-500', label: 'bg-orange-100 text-orange-600' },
+  blue: { bg: 'bg-blue-50', border: 'border-blue-500', ring: 'ring-blue-500', label: 'bg-blue-100 text-blue-600' },
+  purple: { bg: 'bg-purple-50', border: 'border-purple-500', ring: 'ring-purple-500', label: 'bg-purple-100 text-purple-600' },
+  red: { bg: 'bg-red-50', border: 'border-red-500', ring: 'ring-red-500', label: 'bg-red-100 text-red-600' },
+};
 
-const SensorCard = ({ title, value, icon, color, onClick, active }) => (
-  <div 
-    onClick={onClick}
-    className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md
-      ${active ? `border-${color}-500 ring-1 ring-${color}-500` : 'border-slate-200'}
-    `}
-  >
-    <div className="flex justify-between items-start mb-4">
-      <div className={`p-3 rounded-lg bg-${color}-50`}>{icon}</div>
-      {active && <span className={`text-[10px] uppercase font-bold text-${color}-600 bg-${color}-100 px-2 py-1 rounded-full`}>Selected</span>}
+const SensorCard = ({ title, value, icon, color, onClick, active }) => {
+  const theme = colorMap[color];
+  return (
+    <div 
+      onClick={onClick}
+      className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md
+        ${active ? `${theme.border} ring-1 ${theme.ring}` : 'border-slate-200'}
+      `}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-lg ${theme.bg}`}>{icon}</div>
+        {active && <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${theme.label}`}>Selected</span>}
+      </div>
+      <h4 className="text-slate-500 text-sm font-medium uppercase">{title}</h4>
+      <p className="text-3xl font-bold text-slate-800 mt-1">{value}</p>
     </div>
-    <h4 className="text-slate-500 text-sm font-medium uppercase">{title}</h4>
-    <p className="text-3xl font-bold text-slate-800 mt-1">{value}</p>
-  </div>
-);
+  );
+};
 
 const PumpSwitch = ({ name, isOn, onToggle }) => (
   <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-100">

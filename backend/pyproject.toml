@@ -22,6 +22,7 @@ fastapi-pagination = "^0.15.4"
 bcrypt = "^5.0.0"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 paho-mqtt = "^2.1.0"
+line-bot-sdk = "^3.21.0"
 
 [tool.poetry.group.dev.dependencies]
 uvicorn = "^0.34.0"

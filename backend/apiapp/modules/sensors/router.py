@@ -6,7 +6,6 @@ from .schemas import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
 
 # Import Use Case
 from .use_case import SensorUseCase
-
 # สร้าง Router
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
 
@@ -58,3 +57,10 @@ async def get_history(sensor_type: str, limit: int = 20, use_case: SensorUseCase
     ดึงประวัติข้อมูล (Default 20 รายการล่าสุด)
     """
     return await use_case.get_history(sensor_type)
+
+@router.get("/status/analysis")
+async def get_system_status(use_case: SensorUseCase = Depends(get_use_case)):
+    """
+    วิเคราะห์คุณภาพน้ำรวมจากเซนเซอร์ทุกตัว
+    """
+    return await use_case.analyze_water_quality()

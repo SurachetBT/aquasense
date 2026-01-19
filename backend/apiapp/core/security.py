@@ -153,6 +153,20 @@ async def get_current_user(
     # 5. ส่ง User ตัวจริงกลับไป
     return user
 
+async def get_current_admin(
+    current_user: model.User = Depends(get_current_user) 
+) -> model.User:
+    
+    # ✅ แก้ตรงนี้: เติม .value เพื่อดึงค่า string ออกมา ("admin")
+    # หรือใช้ str(current_user.role) ก็ได้ถ้าเป็น StrEnum
+    if current_user.role.value != "admin": 
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource (Admin only)"
+        )
+        
+    return current_user
+
 jwt_handler = JWTHandler(settings.SECRET_KEY, ALGORITHM)
 
 

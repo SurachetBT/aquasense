@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     OTP_INTERVAL: int = 30
 
     API_PREFIX: str = ""
+    LINE_CHANNEL_ACCESS_TOKEN: str = ""
+    LINE_CHANNEL_SECRET: str = ""
+    LINE_USER_ID: str = ""
 
     # CORS
     ALLOW_CREDENTIALS: bool = True

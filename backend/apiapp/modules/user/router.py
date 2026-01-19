@@ -9,7 +9,7 @@ from apiapp.core.exceptions import BusinessLogicError, DuplicatedError, Validati
 
 from .use_case import get_user_use_case, UserUseCase
 from .schemas import CreateUser, GetUser, UpdateUser, UserResponse, ResetPasswordRequest
-from ...core.security import get_current_user
+from ...core.security import get_current_admin
 
 
 router = APIRouter(
@@ -18,14 +18,14 @@ router = APIRouter(
 )
 
 @router.get("/me", response_model=UserResponse)
-async def get_my_profile(current_user: dict = Depends(get_current_user)):
+async def get_my_profile(current_user: dict = Depends(get_current_admin)):
     return current_user
 
 @router.get("/", dependencies=[Depends(Params)], response_model=Page[UserResponse])
 async def get_user_list(
     use_case: UserUseCase = Depends(get_user_use_case),
     params: GetUser = Depends(),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_admin),
 ):
     """
     Get a list of users.
@@ -48,7 +48,7 @@ async def get_user_list(
     response_model=UserResponse,
 )
 async def create_user(
-    user_data: CreateUser, use_case: UserUseCase = Depends(get_user_use_case),current_user: dict = Depends(get_current_user),
+    user_data: CreateUser, use_case: UserUseCase = Depends(get_user_use_case),current_user: dict = Depends(get_current_admin),
 ) -> UserResponse:
     """
     Register a new user.
@@ -65,7 +65,7 @@ async def create_user(
 async def get_user_by_id(
     user_id: str,
     use_case: UserUseCase = Depends(get_user_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_admin),
 ):
     """
     Get user by ID.
@@ -84,7 +84,7 @@ async def update_user(
     user_id: str,
     data: UpdateUser,
     use_case: UserUseCase = Depends(get_user_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_admin),
 ):
     """
     Update user by ID.
@@ -105,7 +105,7 @@ async def update_user(
 async def delete_user(
     user_id: str,
     use_case: UserUseCase = Depends(get_user_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_admin),
 ):
     """
     Delete user by ID.
@@ -123,7 +123,7 @@ async def reset_password(
     user_id: str,
     payload: ResetPasswordRequest,
     use_case: UserUseCase = Depends(get_user_use_case),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_admin),
 ):
     """
     Admin Reset Password for user.
