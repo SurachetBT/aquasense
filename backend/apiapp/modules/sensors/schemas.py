@@ -1,26 +1,48 @@
-from pydantic import BaseModel, Field
+from typing import List, Optional
 from datetime import datetime, timedelta
+from pydantic import Field
+from beanie import Document # ✅ ต้องใช้ Document เพื่อบันทึกลง MongoDB
 
+# --- ฟังก์ชันเวลา (UTC+7) ---
 def now_thai():
     return datetime.utcnow() + timedelta(hours=7)
 
-# --- Base Schema (ส่วนที่เหมือนกัน) ---
-class SensorBase(BaseModel):
-    device_id: str
-    timestamp: datetime = Field(default_factory=now_thai)
+# ==========================================
+# 📡 Sensor Models (ข้อมูลดิบจาก Sensor)
+# ==========================================
 
 # --- pH ---
-class SensorPH(SensorBase):
+class SensorPH(Document):
     ph: float
+    device_id: str = "esp32_default" # ใส่ Default ไว้กัน Error
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_ph" # ชื่อตารางใน DB
 
 # --- Turbidity (NTU) ---
-class SensorTurbidity(SensorBase):
+class SensorTurbidity(Document):
     NTU: float
+    device_id: str = "esp32_default"
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_turbidity"
 
 # --- NH3 ---
-class SensorNH3(SensorBase):
+class SensorNH3(Document):
     NH3: float
+    device_id: str = "esp32_default"
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_nh3"
 
 # --- Temperature ---
-class SensorTemperature(SensorBase):
+class SensorTemperature(Document):
     temperature: float
+    device_id: str = "esp32_default"
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_temperature"

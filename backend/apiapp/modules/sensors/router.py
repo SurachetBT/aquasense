@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-# Import Schemas
-from .schemas import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
+# ✅ แก้ตรงนี้: เปลี่ยนจาก .schemas เป็น .model
+from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
 
 # Import Use Case
 from .use_case import SensorUseCase
+
 # สร้าง Router
+# หมายเหตุ: prefix="/sensors" แปลว่า endpoint ทั้งหมดจะขึ้นต้นด้วย /sensors
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
 
 # Dependency Injection สำหรับ UseCase
@@ -47,6 +49,7 @@ async def get_latest(sensor_type: str, use_case: SensorUseCase = Depends(get_use
     result = await use_case.get_current(sensor_type)
     
     if not result:
+        # ถ้าหาไม่เจอ ให้ return 404 (Not Found)
         raise HTTPException(status_code=404, detail=f"No data found for sensor type: {sensor_type}")
     
     return result

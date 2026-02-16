@@ -9,11 +9,12 @@ import AddUserModal from './AddUserModal';
 import ResetPasswordModal from './ResetPasswordModal';
 import EditUserModal from './EditUserModal'; 
 
-// URL Backend ของคุณ
-const API_BASE_URL = "http://localhost:9000/v1/users";
+// ✅ 1. แก้ไขให้ใช้พอร์ต 9090 จาก config ส่วนกลาง
+import { API_BASE_URL as BASE_URL } from '../../config';
+const API_BASE_URL = `${BASE_URL}/v1/users`;
 
 const UserManagement = () => {
-  // --- 1. State ทั้งหมด ---
+  // --- States ---
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,22 +26,21 @@ const UserManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // --- 2. ฟังก์ชันดึงข้อมูล (Fetch Data) ---
+  // --- 2. ฟังก์ชันดึงข้อมูล (เพิ่มการจัดการ Token) ---
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
       
-      // ยิง API ไปเอาข้อมูล
       const response = await axios.get(API_BASE_URL, {
         headers: { Authorization: `Bearer ${token}` },
         params: { 
-            search: search, // ส่งคำค้นหา (ถ้ามี)
-            limit: 100 // ดึงมาเยอะหน่อย
+            search: search,
+            limit: 100 
         } 
       });
 
-      // ตรวจสอบโครงสร้างข้อมูลว่า Backend ส่งมาแบบไหน (Array หรือ Object)
+      // ตรวจสอบโครงสร้างข้อมูล
       if (Array.isArray(response.data)) {
         setUsers(response.data);
       } else if (response.data.items) {
@@ -52,28 +52,39 @@ const UserManagement = () => {
       setError(null);
     } catch (err) {
       console.error("Error fetching users:", err);
-      setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      // ✅ ถ้า Token หมดอายุ (401) ให้เด้งไปหน้า Login
+      if (err.response?.status === 401) {
+        window.location.href = '/login';
+      }
+      setError("ไม่สามารถโหลดข้อมูลผู้ใช้ได้ (ตรวจสอบสิทธิ์ Admin)");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- 3. useEffect (ทำงานเมื่อเปิดหน้าเว็บ) ---
+  // --- 3. useEffect ---
   useEffect(() => {
-    fetchUsers();
-  }, [search]); // ถ้า search เปลี่ยน ให้โหลดใหม่
+    // ใช้ debounce เล็กน้อยเพื่อไม่ให้ยิง API ถี่เกินไปขณะพิมพ์ค้นหา
+    const delayDebounceFn = setTimeout(() => {
+      fetchUsers();
+    }, 500);
 
-  // --- 4. ฟังก์ชันลบ (Delete) ---
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
+
+  // --- 4. ฟังก์ชันลบ ---
   const handleDelete = async (user) => {
     if (!window.confirm(`คุณต้องการลบผู้ใช้ ${user.username} ใช่หรือไม่?`)) return;
 
     try {
       const token = localStorage.getItem('accessToken');
-      await axios.delete(`${API_BASE_URL}/${user.id}`, {
+      // ✅ ตรวจสอบ Path การลบให้ตรงกับ Backend (ปกติจะใช้ user.id หรือ user._id)
+      const userId = user.id || user._id;
+      await axios.delete(`${API_BASE_URL}/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("ลบผู้ใช้งานสำเร็จ");
-      fetchUsers(); // โหลดข้อมูลใหม่
+      fetchUsers(); 
     } catch (err) {
       alert("ลบไม่สำเร็จ: " + (err.response?.data?.detail || err.message));
     }

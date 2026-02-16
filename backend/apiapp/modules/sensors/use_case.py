@@ -1,31 +1,33 @@
 import time
+from datetime import datetime
 from apiapp.modules.notification.service import LineBotService
 from .repository import SensorRepository
-from .schemas import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
-
+from .schemas import (
+    SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
+)
+from apiapp.modules.reports.model import WaterAnalysisLog
 class SensorUseCase:
     # ---------------------------------------------------------
     # 🧠 ส่วนความจำของระบบ (Class Variables)
     # ---------------------------------------------------------
-    # 1. ตัวแปรจำเวลาแจ้งเตือนล่าสุด (ใช้ร่วมกันทุกครั้งที่เรียก)
     _last_alert_time = 0
 
-    # 2. เก็บค่าล่าสุดที่ "บันทึกลง DB" (เอาไว้เทียบ Deadband)
+    # เก็บค่าล่าสุดที่ "บันทึกลง DB" (เอาไว้เทียบ Deadband)
     _last_saved_values = {
         "ph": None, "turbidity": None, "nh3": None, "temperature": None
     }
     
-    # 3. เก็บเวลาล่าสุดที่ "บันทึกลง DB" (เอาไว้ทำ Heartbeat)
+    # เก็บเวลาล่าสุดที่ "บันทึกลง DB" (เอาไว้ทำ Heartbeat)
     _last_saved_times = {
         "ph": 0, "turbidity": 0, "nh3": 0, "temperature": 0
     }
 
-    # 🎯 ตั้งค่าความละเอียด (เปลี่ยนเกินนี้ถึงจะบันทึก)
+    # ตัวแปรจำเวลาบันทึก Snapshot รายชั่วโมง
+    _last_log_time = 0 
+
+    # 🎯 ตั้งค่าความละเอียด
     THRESHOLDS = {
-        "ph": 0.1,          # pH เปลี่ยน 0.1
-        "turbidity": 5.0,   # ความขุ่นเปลี่ยน 5 NTU
-        "nh3": 0.05,        # แอมโมเนียเปลี่ยน 0.05
-        "temperature": 0.5  # อุณหภูมิเปลี่ยน 0.5 องศา
+        "ph": 0.1, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5
     }
 
     def __init__(self):
@@ -36,76 +38,58 @@ class SensorUseCase:
     # 🕵️‍♂️ ฟังก์ชันช่วยตัดสินใจ (Helper Function)
     # ---------------------------------------------------------
     def _should_save(self, sensor_type: str, current_value: float) -> bool:
-        """
-        ตัดสินใจว่าจะบันทึกหรือไม่?
-        Return: True = บันทึก, False = ไม่บันทึก
-        """
         now = time.time()
         last_val = self._last_saved_values[sensor_type]
         last_time = self._last_saved_times[sensor_type]
         threshold = self.THRESHOLDS[sensor_type]
 
-        # 1. บันทึกครั้งแรกเสมอ
-        if last_val is None:
-            return True
-
-        # 2. เช็ค Deadband (ค่าเปลี่ยนเกินกำหนดไหม?)
-        diff = abs(current_value - last_val)
-        if diff >= threshold:
-            return True
-
-        # 3. Heartbeat: บังคับบันทึกทุก 30 นาที (1800 วิ) กันกราฟขาด
-        if (now - last_time) > 1800:
-            return True
+        if last_val is None: return True
+        if abs(current_value - last_val) >= threshold: return True
+        if (now - last_time) > 1800: return True 
 
         return False
 
     def _update_memory(self, sensor_type: str, value: float):
-        """อัปเดตความจำเมื่อบันทึกเสร็จ"""
         self._last_saved_values[sensor_type] = value
         self._last_saved_times[sensor_type] = time.time()
 
     # ---------------------------------------------------------
-    # 💾 ส่วนบันทึกข้อมูล (Record) - กรองด้วย Deadband
+    # 💾 ส่วนบันทึกข้อมูล (Record)
     # ---------------------------------------------------------
     async def record_ph(self, data: SensorPH):
+        saved = False
         if self._should_save("ph", data.ph):
             await self.repo.add_ph(data)
             self._update_memory("ph", data.ph)
             print(f"✅ Saved pH: {data.ph}")
             saved = True
-        else:
-            saved = False
         return {"status": "success", "type": "ph", "value": data.ph, "saved": saved}
 
     async def record_turbidity(self, data: SensorTurbidity):
+        saved = False
         if self._should_save("turbidity", data.NTU):
             await self.repo.add_turbidity(data)
             self._update_memory("turbidity", data.NTU)
             print(f"✅ Saved Turbidity: {data.NTU}")
             saved = True
-        else:
-            saved = False
         return {"status": "success", "type": "turbidity", "value": data.NTU, "saved": saved}
 
     async def record_nh3(self, data: SensorNH3):
+        saved = False
         if self._should_save("nh3", data.NH3):
             await self.repo.add_nh3(data)
             self._update_memory("nh3", data.NH3)
             print(f"✅ Saved NH3: {data.NH3}")
             saved = True
-        else:
-            saved = False
         return {"status": "success", "type": "nh3", "value": data.NH3, "saved": saved}
 
     async def record_temperature(self, data: SensorTemperature):
+        saved = False
         if self._should_save("temperature", data.temperature):
             await self.repo.add_temperature(data)
             self._update_memory("temperature", data.temperature)
             print(f"✅ Saved Temp: {data.temperature}")
             saved = True
-        else:
-            saved = False
         return {"status": "success", "type": "temperature", "value": data.temperature, "saved": saved}
 
     # --- ส่วนดึงข้อมูล (Get) ---
@@ -116,33 +100,27 @@ class SensorUseCase:
         return await self.repo.get_history(sensor_type)
     
     # ---------------------------------------------------------
-    # 📊 ส่วนวิเคราะห์และแจ้งเตือน (Analysis)
+    # 📊 ส่วนวิเคราะห์และแจ้งเตือน (Analysis) + Snapshot Log
     # ---------------------------------------------------------
     async def analyze_water_quality(self):
-        # 1. ดึงค่าล่าสุดจาก DB
+        # 1. ดึงค่าล่าสุด
         ph_data = await self.repo.get_latest("ph")
         temp_data = await self.repo.get_latest("temperature")
         nh3_data = await self.repo.get_latest("nh3")
         turb_data = await self.repo.get_latest("turbidity")
 
-        # 2. แปลงค่า (Safely Handle None)
+        # 2. แปลงค่า
         ph = ph_data.ph if ph_data else None
         temp = temp_data.temperature if temp_data else None
         nh3 = nh3_data.NH3 if nh3_data else None
         ntu = turb_data.NTU if turb_data else None
 
-        # ถ้าไม่มีข้อมูลเลย
         if not any([ph, temp, nh3, ntu]):
-            return {
-                "status": "No Data",
-                "message": "Waiting for sensor data...",
-                "color": "gray",
-                "issues": []
-            }
+            return {"status": "No Data", "message": "Waiting...", "color": "gray", "issues": []}
 
         issues = [] 
 
-        # 3. ตรวจสอบเงื่อนไข (Logic)
+        # 3. ตรวจสอบเงื่อนไข
         if ph is not None:
             if ph < 6.5: issues.append(f"pH ต่ำเกินไป ({ph:.1f})")
             elif ph > 8.5: issues.append(f"pH สูงเกินไป ({ph:.1f})")
@@ -158,12 +136,11 @@ class SensorUseCase:
         if ntu is not None:
             if ntu > 50: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
 
-        # 4. สรุปผล (ค่าเริ่มต้น = ปกติ)
+        # 4. สรุปผล
         status = "Good"
         color = "green"
         message = "คุณภาพน้ำปกติ เหมาะแก่การเลี้ยงสัตว์น้ำ"
 
-        # ถ้ามีปัญหา
         if issues:
             is_critical = any("อันตราย" in msg for msg in issues) or \
                           any("สูงเกินไป" in msg for msg in issues) or \
@@ -174,34 +151,40 @@ class SensorUseCase:
                 color = "red"
                 message = "คุณภาพน้ำวิกฤต! กรุณาตรวจสอบทันที"
 
-                # 🔥 แจ้งเตือน LINE (มี Cooldown)
+                # แจ้งเตือน LINE (Cooldown)
                 current_time = time.time()
-                # เช็คเวลาจาก Class Variable (_last_alert_time)
-                # ตั้ง Cooldown ไว้ 3600 วิ (1 ชม.) ถ้าจะเทสแก้เป็น 60
                 if (current_time - SensorUseCase._last_alert_time) > 3600:
-                    
                     alert_msg = f"🚨 แจ้งเตือนภัยวิกฤต!\nสถานะ: {message}\n"
-                    for issue in issues:
-                        alert_msg += f"• {issue}\n"
-                    
+                    for issue in issues: alert_msg += f"• {issue}\n"
                     self.line_service.send_alert(alert_msg)
-                    
-                    # อัปเดตเวลาล่าสุด
                     SensorUseCase._last_alert_time = current_time
-
             else:
-                # กรณี Warning
                 status = "Warning"
                 color = "orange"
                 message = "คุณภาพน้ำเริ่มมีปัญหา"
 
-        # 5. ส่งค่ากลับเสมอ (อยู่นอก if/else)
+        # ---------------------------------------------------------
+        # ✅ ยังต้องเก็บส่วนนี้ไว้! (เพื่อให้ Modules Reports มีข้อมูลไปใช้)
+        # ---------------------------------------------------------
+        current_ts = time.time()
+        
+        # ถ้าผ่านไป 1 ชั่วโมง (3600 วิ) นับจากครั้งล่าสุด
+        if (current_ts - SensorUseCase._last_log_time) > 3600:
+            
+            # สร้างข้อมูล Log ลง DB
+            log = WaterAnalysisLog(
+                timestamp=datetime.now(),
+                status=status,     # สถานะปัจจุบัน
+                issues=issues,     # ปัญหาที่เจอ
+                ph=ph, turbidity=ntu, nh3=nh3, temperature=temp
+            )
+            await log.save() 
+            print(f"📝 บันทึก Snapshot รายชั่วโมงเรียบร้อย: {status}")
+            
+            # อัปเดตเวลาล่าสุด
+            SensorUseCase._last_log_time = current_ts
+
         return {
-            "status": status,
-            "message": message,
-            "color": color,
-            "issues": issues,
-            "current_values": {
-                "ph": ph, "temp": temp, "nh3": nh3, "ntu": ntu
-            }
+            "status": status, "message": message, "color": color, "issues": issues,
+            "current_values": { "ph": ph, "temp": temp, "nh3": nh3, "ntu": ntu }
         }

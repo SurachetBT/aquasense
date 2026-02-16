@@ -1,0 +1,75 @@
+services:
+  # --- 1. Database: MongoDB ---
+  mongodb:
+    image: mongo:8
+    container_name: aquasense-mongodb
+    volumes:
+      # เก็บข้อมูลไว้ในโฟลเดอร์ deployment เพื่อให้ข้อมูลไม่หาย
+      - ../deployment/aquasense/mongodb/data/db:/data/db
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    networks:
+      - aquasense-net
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- 2. Backend API: FastAPI ---
+  api:
+    build: ./backend
+    image: aquasense/api:latest
+    container_name: aquasense-api
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ../deployment/aquasense/data:/app/data
+    ports:
+      - 9090:9000
+    environment:
+      - PYTHONUNBUFFERED=1
+      # เชื่อมต่อ DB โดยใช้ชื่อ service 'mongodb'
+      - MONGODB_URL=mongodb://mongodb:27017/aquasense
+    depends_on:
+      - mongodb
+    networks:
+      - aquasense-net
+    restart: always
+    env_file:
+      - ./backend/.env
+    # 🌟 ปรับตามที่คุณแจ้ง: ใช้สคริปต์ run-dev ในการรัน
+    command: ./scripts/run-dev
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- 3. Frontend Web: React (Vite) ---
+  web:
+    build: ./frontend
+    image: aquasense/web:latest
+    container_name: aquasense-web
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - 9091:5173 
+    networks:
+      - aquasense-net
+    depends_on:
+      - api
+    restart: always
+    env_file:
+      - ./frontend/.env
+    # 🌟 รัน Vite แบบ Dev mode ตามที่คุยกันไว้ (ไม่ใช้ Nginx)
+    command: npm run dev -- --host 0.0.0.0
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  aquasense-net:
+    driver: bridge
+
+volumes:
+  # ประกาศชื่อ volume เพื่อใช้จัดการข้อมูลภายใน
+  mongo_data:

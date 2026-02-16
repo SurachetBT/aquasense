@@ -41,3 +41,127 @@
   color: #888;
 }
 
+/* Container หลัก */
+.water-table-container {
+  padding: 24px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  font-family: 'Sarabun', sans-serif; /* แนะนำให้ใช้ font ไทยสวยๆ */
+}
+
+/* ส่วนหัวและตัวกรอง */
+.table-header-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ปุ่มสลับโหมด */
+.btn-group {
+  display: flex;
+  background: #f0f0f0;
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.btn-group button {
+  border: none;
+  background: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-group button.active {
+  background-color: #fff;
+  color: #007bff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.month-picker {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* ตาราง */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.water-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px; /* กันตารางบีบเกินไปในมือถือ */
+}
+
+.water-table th, .water-table td {
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.water-table th {
+  background-color: #f8f9fa;
+  color: #444;
+  font-weight: 600;
+}
+
+.water-table tr:hover {
+  background-color: #fcfcfc;
+}
+
+.text-center { text-align: center; }
+.text-ok { color: #ccc; }
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* สีตามสถานะ (ปรับตาม Business Logic ของคุณ) */
+.status-badge.normal, .status-badge.ok {
+  background-color: #d4edda;
+  color: #155724;
+}
+.status-badge.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+.status-badge.critical, .status-badge.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+.status-badge.unknown {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+/* Issue Tags */
+.issue-tag {
+  background-color: #ffeef0;
+  color: #d63384;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 4px;
+  border: 1px solid #ffd6e0;
+}
+

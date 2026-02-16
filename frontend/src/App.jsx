@@ -3,9 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // 1. Import ไฟล์เข้ามา (เช็ค path ให้ถูกนะ)
 import Login from './login';
-import Dashboard from './Dashboard';
+import Dashboard from './components/Dashboard/Dashboard.jsx';
 import UserManagement from './components/UserManagement/UserManagement'; 
 import Layout from './components/bar/Layout';
+import Reports from './components/reports/reports.jsx' 
 function App() {
   return (
     <BrowserRouter>
@@ -17,6 +18,7 @@ function App() {
         <Route element={<Layout />}>
         {/* 2. กำหนด Path สำหรับหน้าจัดการ User */}
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/reports" element={<Reports />} />
         
         {/* ถ้ามีหน้า Dashboard ก็ใส่ไว้แบบนี้ */}
         {<Route path="/dashboard" element={<Dashboard />} />}

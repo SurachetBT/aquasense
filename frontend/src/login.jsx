@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+// ✅ 1. นำเข้า API_BASE_URL จาก config ส่วนกลาง
+import { API_BASE_URL } from "./config";
 
 const Login = () => {
-  // 1. กำหนด State สำหรับเก็บค่าจาก Input
   const [credentials, setCredentials] = useState({
     username: '',
     password: '',
@@ -12,7 +13,6 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  // ✅ เพิ่มฟังก์ชันนี้กลับเข้ามาครับ
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({
@@ -26,13 +26,14 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    // FastAPI OAuth2 ใช้ Form Data (URLSearchParams)
     const formData = new URLSearchParams();
     formData.append('username', credentials.username);
     formData.append('password', credentials.password);
 
     try {
-      // --- STEP 1: Login เพื่อขอ Token ---
-      const loginRes = await fetch('http://localhost:9000/v1/auth/login', {
+      // --- STEP 1: Login (เปลี่ยนมาใช้ตัวแปร API_BASE_URL) ---
+      const loginRes = await fetch(`${API_BASE_URL}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData,
@@ -44,14 +45,13 @@ const Login = () => {
         throw new Error(loginData.detail || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
       }
 
-      // ได้ Token มาแล้ว เก็บเลย
+      // เก็บ Access Token ลง LocalStorage
       const token = loginData.access_token;
       localStorage.setItem('accessToken', token);
 
-      // --- STEP 2: ใช้ Token ไปดึงข้อมูล User ---
+      // --- STEP 2: ดึงข้อมูลโปรไฟล์ (รวมถึง Role Admin/User) ---
       try {
-        // ⚠️ เช็ค URL ให้ชัวร์ว่ามี /v1 หรือไม่
-        const userRes = await fetch('http://localhost:9000/v1/users/me', { 
+        const userRes = await fetch(`${API_BASE_URL}/v1/users/me`, { 
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}` 
@@ -60,9 +60,8 @@ const Login = () => {
 
         if (userRes.ok) {
           const userData = await userRes.json();
+          // ✅ เก็บข้อมูล User ไว้ใช้เช็คสิทธิ์ Admin ในหน้า Dashboard
           localStorage.setItem('userData', JSON.stringify(userData));
-        } else {
-            console.warn("ดึงข้อมูล User ไม่สำเร็จ (อาจจะไม่มี endpoint นี้ หรือ Token ผิด)");
         }
       } catch (userErr) {
         console.error("Error fetching user data:", userErr);
@@ -72,7 +71,11 @@ const Login = () => {
       navigate('/dashboard');
 
     } catch (err) {
-      setError(err.message || 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+      // ✅ จัดการ Error "Failed to fetch" (พอร์ตผิด/Server ดับ) ให้เข้าใจง่ายขึ้น
+      const errorMsg = err.message === 'Failed to fetch' 
+        ? 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ (โปรดตรวจสอบ Docker หรือพอร์ต 9090)' 
+        : err.message;
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }

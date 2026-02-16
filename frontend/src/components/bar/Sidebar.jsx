@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, Settings, Droplets } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ClipboardMinus , Droplets } from 'lucide-react';
 
 const Sidebar = () => {
   const location = useLocation();
@@ -15,6 +15,7 @@ const Sidebar = () => {
   // รายการเมนู
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/reports', label: 'Reports', icon: ClipboardMinus },
     { path: '/users', label: 'User Management', icon: Users },
     // เพิ่มเมนูอื่นๆ ตรงนี้ได้
   ];
