@@ -51,7 +51,7 @@ RUN chmod +x ./scripts/run-dev
 # 🌟 2. ตั้งค่า PATH ให้ชี้ไปที่ .venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-EXPOSE 9000
+EXPOSE 10000
 
 # 🌟 3. รันสคริปต์ ./scripts/run-dev
 CMD ["./scripts/run-dev"]
