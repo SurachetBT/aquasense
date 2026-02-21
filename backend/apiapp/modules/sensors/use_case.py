@@ -183,7 +183,7 @@ class SensorUseCase:
         current_ts = time.time()
         
         # ถ้าผ่านไป 1 ชั่วโมง (3600 วิ) นับจากครั้งล่าสุด
-        if (current_ts - SensorUseCase._last_log_time) > 3600:
+        if (current_ts - SensorUseCase._last_log_time) > 60:
             
             # สร้างข้อมูล Log ลง DB
             log = WaterAnalysisLog(
