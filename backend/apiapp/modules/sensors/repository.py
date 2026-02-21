@@ -1,11 +1,12 @@
 from typing import List, Optional, Union
-from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
+from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 # Import Schemas มาด้วยเพื่อใช้เป็น Type Hint (ตั้งชื่อ alias เพื่อไม่ให้ซ้ำกับ Model)
 from .schemas import (
     SensorPH as SchemaPH, 
     SensorTurbidity as SchemaTurbidity, 
     SensorNH3 as SchemaNH3, 
-    SensorTemperature as SchemaTemperature
+    SensorTemperature as SchemaTemperature,
+    SensorTDS as SchemaTDS
 )
 
 class SensorRepository:
@@ -48,6 +49,14 @@ class SensorRepository:
         await record.insert()
         return record
 
+    async def add_tds(self, data: SchemaTDS) -> SensorTDS:
+        record = SensorTDS(
+            device_id=data.device_id,
+            tds=data.tds
+        )
+        await record.insert()
+        return record
+
     # ==========================================
     # 🔍 ส่วนดึงข้อมูล (Read / Query)
     # ==========================================
@@ -82,4 +91,6 @@ class SensorRepository:
             return SensorNH3
         elif sensor_type == "temperature": 
             return SensorTemperature
+        elif sensor_type == "tds":
+            return SensorTDS
         return None

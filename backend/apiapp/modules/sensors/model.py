@@ -78,3 +78,20 @@ class SensorTemperature(Document):
                 expireAfterSeconds=SECONDS_TO_EXPIRE
             )
         ]
+
+# ==========================================
+# 5. Sensor TDS (ความเข้มข้นของสารละลาย)
+# ==========================================
+class SensorTDS(Document):
+    device_id: str
+    tds: float
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_TDS"
+        indexes = [
+            pymongo.IndexModel(
+                [("timestamp", pymongo.ASCENDING)],
+                expireAfterSeconds=SECONDS_TO_EXPIRE
+            )
+        ]

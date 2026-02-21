@@ -46,3 +46,12 @@ class SensorTemperature(Document):
 
     class Settings:
         name = "sensor_temperature"
+
+# --- TDS ---
+class SensorTDS(Document):
+    tds: float
+    device_id: str = "esp32_default"
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_tds"

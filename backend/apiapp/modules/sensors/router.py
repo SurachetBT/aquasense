@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
 # ✅ แก้ตรงนี้: เปลี่ยนจาก .schemas เป็น .model
-from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
+from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 
 # Import Use Case
 from .use_case import SensorUseCase
@@ -36,6 +36,10 @@ async def add_nh3(data: SensorNH3, use_case: SensorUseCase = Depends(get_use_cas
 async def add_temperature(data: SensorTemperature, use_case: SensorUseCase = Depends(get_use_case)):
     return await use_case.record_temperature(data)
 
+@router.post("/add/tds")
+async def add_tds(data: SensorTDS, use_case: SensorUseCase = Depends(get_use_case)):
+    return await use_case.record_tds(data)
+
 # ==========================================
 # 📤 GET: ดึงข้อมูล (Retrieve Data)
 # ==========================================
@@ -44,7 +48,7 @@ async def add_temperature(data: SensorTemperature, use_case: SensorUseCase = Dep
 async def get_latest(sensor_type: str, use_case: SensorUseCase = Depends(get_use_case)):
     """
     ดึงข้อมูลล่าสุดของ Sensor ที่ระบุ
-    sensor_type options: 'ph', 'turbidity', 'nh3', 'temperature'
+    sensor_type options: 'ph', 'turbidity', 'nh3', 'temperature', 'tds'
     """
     result = await use_case.get_current(sensor_type)
     

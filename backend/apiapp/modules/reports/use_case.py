@@ -43,6 +43,10 @@ class ReportUseCase:
         
         avg_turbidity = sum(turbidity_values) / len(turbidity_values) if turbidity_values else 0
 
+        # --- [NEW] ✅ คำนวณ TDS ---
+        tds_values = [log.tds for log in logs if log.tds is not None]
+        avg_tds = sum(tds_values) / len(tds_values) if tds_values else 0
+
         daily_message = "เยี่ยมมาก"
         if critical_count > 0: daily_message = "มีวิกฤต!"
         elif warning_count > 0: daily_message = "ต้องระวัง"
@@ -56,7 +60,8 @@ class ReportUseCase:
                 "avg_ph": round(avg_ph, 2), 
                 "max_nh3": round(max_nh3, 3),
                 "avg_turbidity": round(avg_turbidity, 2),
-                "avg_temp": round(avg_temp, 1)
+                "avg_temp": round(avg_temp, 1),
+                "avg_tds": round(avg_tds, 1)
             }
         }
 
@@ -108,6 +113,9 @@ class ReportUseCase:
                 # --- [NEW] ✅ ใส่ค่าความขุ่นลงตาราง ---
                 "turbidity": f"{turbid_val:.2f}" if turbid_val is not None else "-",
                 
+                # --- [NEW] ✅ ใส่ค่า TDS ลงตาราง ---
+                "tds": f"{log.tds:.1f}" if log.tds is not None else "-",
+                
                 "issues": ", ".join(log.issues) if log.issues else "ปกติ"
             })
         return table_rows
@@ -132,6 +140,7 @@ class ReportUseCase:
                     "avg_temp": "-", 
                     "max_nh3": "-", 
                     "avg_turbidity": "-", 
+                    "avg_tds": "-",
                     "note": "ไม่มีข้อมูล"
                 })
                 continue
@@ -140,6 +149,7 @@ class ReportUseCase:
             ph_list = [l.ph for l in day_logs if l.ph is not None]
             temp_list = [l.temperature for l in day_logs if l.temperature is not None]
             nh3_list = [l.nh3 for l in day_logs if l.nh3 is not None]
+            tds_list = [l.tds for l in day_logs if l.tds is not None]
             
             # --- [NEW] ✅ ดึงค่าความขุ่นของวันนั้น ---
             turbid_list = []
@@ -153,6 +163,7 @@ class ReportUseCase:
             avg_temp = sum(temp_list) / len(temp_list) if temp_list else 0
             max_nh3 = max(nh3_list) if nh3_list else 0
             avg_turbidity = sum(turbid_list) / len(turbid_list) if turbid_list else 0 # <--- ✅ คำนวณเฉลี่ย
+            avg_tds = sum(tds_list) / len(tds_list) if tds_list else 0
 
             daily_status = "Good"
             if any(l.status == "Critical" for l in day_logs): daily_status = "Critical"
@@ -167,6 +178,7 @@ class ReportUseCase:
                 
                 # --- [NEW] ✅ ส่งค่าเฉลี่ยความขุ่นกลับไป ---
                 "avg_turbidity": f"{avg_turbidity:.2f}",
+                "avg_tds": f"{avg_tds:.1f}",
                 
                 "note": f"บันทึก {len(day_logs)} ครั้ง"
             })

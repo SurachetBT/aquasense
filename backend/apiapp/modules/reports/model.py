@@ -21,6 +21,7 @@ class WaterAnalysisLog(Document):
     turbidity: Optional[float] = None
     nh3: Optional[float] = None
     temperature: Optional[float] = None
+    tds: Optional[float] = None
 
     class Settings:
         name = "water_analysis"

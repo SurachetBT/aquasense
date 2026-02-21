@@ -3,7 +3,7 @@ from datetime import datetime
 from apiapp.modules.notification.service import LineBotService
 from .repository import SensorRepository
 from .schemas import (
-    SensorPH, SensorTurbidity, SensorNH3, SensorTemperature
+    SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 )
 from apiapp.modules.reports.model import WaterAnalysisLog
 class SensorUseCase:
@@ -14,12 +14,12 @@ class SensorUseCase:
 
     # เก็บค่าล่าสุดที่ "บันทึกลง DB" (เอาไว้เทียบ Deadband)
     _last_saved_values = {
-        "ph": None, "turbidity": None, "nh3": None, "temperature": None
+        "ph": None, "turbidity": None, "nh3": None, "temperature": None, "tds": None
     }
     
     # เก็บเวลาล่าสุดที่ "บันทึกลง DB" (เอาไว้ทำ Heartbeat)
     _last_saved_times = {
-        "ph": 0, "turbidity": 0, "nh3": 0, "temperature": 0
+        "ph": 0, "turbidity": 0, "nh3": 0, "temperature": 0, "tds": 0
     }
 
     # ตัวแปรจำเวลาบันทึก Snapshot รายชั่วโมง
@@ -27,7 +27,7 @@ class SensorUseCase:
 
     # 🎯 ตั้งค่าความละเอียด
     THRESHOLDS = {
-        "ph": 0.1, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5
+        "ph": 0.1, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5, "tds": 10.0
     }
 
     def __init__(self):
@@ -92,6 +92,15 @@ class SensorUseCase:
             saved = True
         return {"status": "success", "type": "temperature", "value": data.temperature, "saved": saved}
 
+    async def record_tds(self, data: SensorTDS):
+        saved = False
+        if self._should_save("tds", data.tds):
+            await self.repo.add_tds(data)
+            self._update_memory("tds", data.tds)
+            print(f"✅ Saved TDS: {data.tds}")
+            saved = True
+        return {"status": "success", "type": "tds", "value": data.tds, "saved": saved}
+
     # --- ส่วนดึงข้อมูล (Get) ---
     async def get_current(self, sensor_type: str):
         return await self.repo.get_latest(sensor_type)
@@ -108,14 +117,16 @@ class SensorUseCase:
         temp_data = await self.repo.get_latest("temperature")
         nh3_data = await self.repo.get_latest("nh3")
         turb_data = await self.repo.get_latest("turbidity")
+        tds_data = await self.repo.get_latest("tds")
 
         # 2. แปลงค่า
         ph = ph_data.ph if ph_data else None
         temp = temp_data.temperature if temp_data else None
         nh3 = nh3_data.NH3 if nh3_data else None
         ntu = turb_data.NTU if turb_data else None
+        tds = tds_data.tds if tds_data else None
 
-        if not any([ph, temp, nh3, ntu]):
+        if not any([ph, temp, nh3, ntu, tds]):
             return {"status": "No Data", "message": "Waiting...", "color": "gray", "issues": []}
 
         issues = [] 
@@ -134,7 +145,10 @@ class SensorUseCase:
             elif temp > 32: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
 
         if ntu is not None:
-            if ntu > 50: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
+            if ntu > 125: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
+
+        if tds is not None:
+            if tds > 700: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
 
         # 4. สรุปผล
         status = "Good"
@@ -176,7 +190,7 @@ class SensorUseCase:
                 timestamp=datetime.now(),
                 status=status,     # สถานะปัจจุบัน
                 issues=issues,     # ปัญหาที่เจอ
-                ph=ph, turbidity=ntu, nh3=nh3, temperature=temp
+                ph=ph, turbidity=ntu, nh3=nh3, temperature=temp, tds=tds
             )
             await log.save() 
             print(f"📝 บันทึก Snapshot รายชั่วโมงเรียบร้อย: {status}")
@@ -186,5 +200,5 @@ class SensorUseCase:
 
         return {
             "status": status, "message": message, "color": color, "issues": issues,
-            "current_values": { "ph": ph, "temp": temp, "nh3": nh3, "ntu": ntu }
+            "current_values": { "ph": ph, "temp": temp, "nh3": nh3, "ntu": ntu, "tds": tds }
         }

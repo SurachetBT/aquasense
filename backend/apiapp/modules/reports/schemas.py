@@ -13,6 +13,7 @@ class DailyStatistics(BaseModel):
     max_nh3: float
     avg_turbidity: float  
     avg_temp: float
+    avg_tds: float
 
 class DailySummaryResponse(BaseModel):
     """ Card สรุปยอดรายวัน """
@@ -28,6 +29,7 @@ class DailyTableRow(BaseModel):
     temp: str
     nh3: str
     turbidity: str  
+    tds: str
     issues: str
 
 # ==========================================
@@ -49,4 +51,5 @@ class MonthlyTableRow(BaseModel):
     avg_temp: str
     max_nh3: str
     avg_turbidity: str 
+    avg_tds: str
     note: str
