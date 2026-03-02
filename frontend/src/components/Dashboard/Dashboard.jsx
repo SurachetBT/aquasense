@@ -171,8 +171,8 @@ const Dashboard = () => {
         <SensorCard title="Turbidity" value={`${sensors.turbidity} NTU`} icon={<Activity className="text-purple-500" />} color="purple" onClick={() => setSelectedGraph('turbidity')} active={selectedGraph === 'turbidity'} />
         <SensorCard title="TDS" value={`${sensors.tds} ppm`} icon={<Activity className="text-emerald-500" />} color="emerald" onClick={() => setSelectedGraph('tds')} active={selectedGraph === 'tds'} />
         <SensorCard title="Ammonia (NH3)" value={`${sensors.nh3} ppm`} icon={<Skull className="text-red-500" />} color="red" onClick={() => setSelectedGraph('nh3')} active={selectedGraph === 'nh3'} />
-        
-        
+
+
       </div>
 
       {/* ✅ SUMMARY SECTION (FIXED) */}
@@ -324,9 +324,14 @@ const Dashboard = () => {
               {[1, 2, 3].map(num => {
                 const deviceName = `servo${num}`;
                 const isOn = deviceStatus[deviceName];
+                const labels = {
+                  1: "อาหารปลา",
+                  2: "PH down",
+                  3: "PH up"
+                };
                 return (
                   <button key={num} onClick={() => handleControl(deviceName, isOn ? 'off' : 'on')} className={`py-3 rounded-lg font-semibold text-sm transition-all active:scale-95 border ${isOn ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                    Servo {num}
+                    {labels[num]}
                     <span className="block text-[10px] font-normal opacity-80">{isOn ? 'ON' : 'OFF'}</span>
                   </button>
                 );
