@@ -95,3 +95,20 @@ class SensorTDS(Document):
                 expireAfterSeconds=SECONDS_TO_EXPIRE
             )
         ]
+
+# ==========================================
+# 6. Sensor pH Voltage
+# ==========================================
+class SensorPHVoltage(Document):
+    device_id: str
+    voltage: float
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_ph_voltage"
+        indexes = [
+            pymongo.IndexModel(
+                [("timestamp", pymongo.ASCENDING)],
+                expireAfterSeconds=SECONDS_TO_EXPIRE
+            )
+        ]

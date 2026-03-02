@@ -18,6 +18,7 @@ class WaterAnalysisLog(Document):
     issues: List[str] = []      
     
     ph: Optional[float] = None
+    ph_voltage: Optional[float] = None
     turbidity: Optional[float] = None
     nh3: Optional[float] = None
     temperature: Optional[float] = None

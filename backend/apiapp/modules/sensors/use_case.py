@@ -1,33 +1,34 @@
 import time
 from datetime import datetime
+from typing import Optional, Dict
 from apiapp.modules.notification.service import LineBotService
 from .repository import SensorRepository
 from .schemas import (
-    SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
+    SensorPH, SensorPHVoltage, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 )
 from apiapp.modules.reports.model import WaterAnalysisLog
 class SensorUseCase:
     # ---------------------------------------------------------
     # 🧠 ส่วนความจำของระบบ (Class Variables)
     # ---------------------------------------------------------
-    _last_alert_time = 0
+    _last_alert_time: float = 0
 
     # เก็บค่าล่าสุดที่ "บันทึกลง DB" (เอาไว้เทียบ Deadband)
-    _last_saved_values = {
-        "ph": None, "turbidity": None, "nh3": None, "temperature": None, "tds": None
+    _last_saved_values: dict[str, Optional[float]] = {
+        "ph": None, "ph_voltage": None, "turbidity": None, "nh3": None, "temperature": None, "tds": None
     }
     
     # เก็บเวลาล่าสุดที่ "บันทึกลง DB" (เอาไว้ทำ Heartbeat)
-    _last_saved_times = {
-        "ph": 0, "turbidity": 0, "nh3": 0, "temperature": 0, "tds": 0
+    _last_saved_times: dict[str, float] = {
+        "ph": 0, "ph_voltage": 0, "turbidity": 0, "nh3": 0, "temperature": 0, "tds": 0
     }
 
     # ตัวแปรจำเวลาบันทึก Snapshot รายชั่วโมง
-    _last_log_time = 0 
+    _last_log_time: float = 0 
 
     # 🎯 ตั้งค่าความละเอียด
     THRESHOLDS = {
-        "ph": 0.1, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5, "tds": 10.0
+        "ph": 0.1, "ph_voltage": 0.01, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5, "tds": 10.0
     }
 
     def __init__(self):
@@ -64,6 +65,15 @@ class SensorUseCase:
             print(f"✅ Saved pH: {data.ph}")
             saved = True
         return {"status": "success", "type": "ph", "value": data.ph, "saved": saved}
+
+    async def record_ph_voltage(self, data: SensorPHVoltage):
+        saved = False
+        if self._should_save("ph_voltage", data.voltage):
+            await self.repo.add_ph_voltage(data)
+            self._update_memory("ph_voltage", data.voltage)
+            print(f"✅ Saved pH Voltage: {data.voltage}")
+            saved = True
+        return {"status": "success", "type": "ph_voltage", "value": data.voltage, "saved": saved}
 
     async def record_turbidity(self, data: SensorTurbidity):
         saved = False
@@ -114,6 +124,7 @@ class SensorUseCase:
     async def analyze_water_quality(self):
         # 1. ดึงค่าล่าสุด
         ph_data = await self.repo.get_latest("ph")
+        ph_v_data = await self.repo.get_latest("ph_voltage")
         temp_data = await self.repo.get_latest("temperature")
         nh3_data = await self.repo.get_latest("nh3")
         turb_data = await self.repo.get_latest("turbidity")
@@ -121,12 +132,13 @@ class SensorUseCase:
 
         # 2. แปลงค่า
         ph = ph_data.ph if ph_data else None
+        ph_v = ph_v_data.voltage if ph_v_data else None
         temp = temp_data.temperature if temp_data else None
         nh3 = nh3_data.NH3 if nh3_data else None
         ntu = turb_data.NTU if turb_data else None
         tds = tds_data.tds if tds_data else None
 
-        if not any([ph, temp, nh3, ntu, tds]):
+        if not any([ph, ph_v, temp, nh3, ntu, tds]):
             return {"status": "No Data", "message": "Waiting...", "color": "gray", "issues": []}
 
         issues = [] 
@@ -190,7 +202,7 @@ class SensorUseCase:
                 timestamp=datetime.now(),
                 status=status,     # สถานะปัจจุบัน
                 issues=issues,     # ปัญหาที่เจอ
-                ph=ph, turbidity=ntu, nh3=nh3, temperature=temp, tds=tds
+                ph=ph, ph_voltage=ph_v, turbidity=ntu, nh3=nh3, temperature=temp, tds=tds
             )
             await log.save() 
             print(f"📝 บันทึก Snapshot รายชั่วโมงเรียบร้อย: {status}")

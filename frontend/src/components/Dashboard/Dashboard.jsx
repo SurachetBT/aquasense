@@ -9,7 +9,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // --- States ---
-  const [sensors, setSensors] = useState({ temperature: 0, ph: 0, turbidity: 0, nh3: 0, tds: 0 });
+  const [sensors, setSensors] = useState({ temperature: 0, ph: 0, ph_voltage: 0, turbidity: 0, nh3: 0, tds: 0 });
   const [analysis, setAnalysis] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [selectedGraph, setSelectedGraph] = useState('temperature');
@@ -43,13 +43,13 @@ const Dashboard = () => {
       navigate('/login');
     }
   };
-
   const fetchLatestData = async () => {
     try {
       const headers = getAuthHeader();
-      const [resTemp, resPh, resTurb, resNh3, resTds, resAnalysis] = await Promise.all([
+      const [resTemp, resPh, resPhVoltage, resTurb, resNh3, resTds, resAnalysis] = await Promise.all([
         axios.get(`${API_BASE_URL}/sensors/latest/temperature`, { headers }),
         axios.get(`${API_BASE_URL}/sensors/latest/ph`, { headers }),
+        axios.get(`${API_BASE_URL}/sensors/latest/ph_voltage`, { headers }),
         axios.get(`${API_BASE_URL}/sensors/latest/turbidity`, { headers }),
         axios.get(`${API_BASE_URL}/sensors/latest/nh3`, { headers }),
         axios.get(`${API_BASE_URL}/sensors/latest/tds`, { headers }),
@@ -59,6 +59,7 @@ const Dashboard = () => {
       setSensors({
         temperature: resTemp.data.temperature || 0,
         ph: resPh.data.ph || 0,
+        ph_voltage: resPhVoltage.data.voltage || 0,
         turbidity: resTurb.data.NTU || 0,
         nh3: resNh3.data.NH3 || 0,
         tds: resTds.data.tds || 0
@@ -79,7 +80,7 @@ const Dashboard = () => {
       const res = await axios.get(`${API_BASE_URL}/sensors/history/${type}?limit=20`, { headers });
       const formattedData = res.data.map(item => ({
         time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : (type === 'tds' ? 'tds' : type))]
+        value: item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : (type === 'tds' ? 'tds' : (type === 'ph_voltage' ? 'voltage' : type)))]
       })).reverse();
       setHistoryData(formattedData);
     } catch (error) {
@@ -168,6 +169,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SensorCard title="Temperature" value={`${sensors.temperature} °C`} icon={<Thermometer className="text-orange-500" />} color="orange" onClick={() => setSelectedGraph('temperature')} active={selectedGraph === 'temperature'} />
         <SensorCard title="pH Level" value={sensors.ph} icon={<Droplets className="text-blue-500" />} color="blue" onClick={() => setSelectedGraph('ph')} active={selectedGraph === 'ph'} />
+        <SensorCard title="pH Voltage" value={`${sensors.ph_voltage} V`} icon={<Activity className="text-cyan-500" />} color="emerald" onClick={() => setSelectedGraph('ph_voltage')} active={selectedGraph === 'ph_voltage'} />
         <SensorCard title="Turbidity" value={`${sensors.turbidity} NTU`} icon={<Activity className="text-purple-500" />} color="purple" onClick={() => setSelectedGraph('turbidity')} active={selectedGraph === 'turbidity'} />
         <SensorCard title="TDS" value={`${sensors.tds} ppm`} icon={<Activity className="text-emerald-500" />} color="emerald" onClick={() => setSelectedGraph('tds')} active={selectedGraph === 'tds'} />
         <SensorCard title="Ammonia (NH3)" value={`${sensors.nh3} ppm`} icon={<Skull className="text-red-500" />} color="red" onClick={() => setSelectedGraph('nh3')} active={selectedGraph === 'nh3'} />

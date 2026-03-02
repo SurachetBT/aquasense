@@ -1,9 +1,9 @@
 from typing import List, Optional, Union
-from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
-# Import Schemas มาด้วยเพื่อใช้เป็น Type Hint (ตั้งชื่อ alias เพื่อไม่ให้ซ้ำกับ Model)
+from .model import SensorPH, SensorPHVoltage, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 from .schemas import (
-    SensorPH as SchemaPH, 
-    SensorTurbidity as SchemaTurbidity, 
+    SensorPH as SchemaPH,
+    SensorPHVoltage as SchemaPHVoltage,
+    SensorTurbidity as SchemaTurbidity,
     SensorNH3 as SchemaNH3, 
     SensorTemperature as SchemaTemperature,
     SensorTDS as SchemaTDS
@@ -23,6 +23,14 @@ class SensorRepository:
             # timestamp จะถูกสร้างเองจาก default_factory ใน model.py
         )
         await record.insert() # สั่งบันทึกลง MongoDB
+        return record
+
+    async def add_ph_voltage(self, data: SchemaPHVoltage) -> SensorPHVoltage:
+        record = SensorPHVoltage(
+            device_id=data.device_id,
+            voltage=data.voltage
+        )
+        await record.insert()
         return record
 
     async def add_turbidity(self, data: SchemaTurbidity) -> SensorTurbidity:
@@ -85,6 +93,8 @@ class SensorRepository:
         """ช่วยแปลง string เป็น Class ของ Beanie"""
         if sensor_type == "ph": 
             return SensorPH
+        elif sensor_type == "ph_voltage":
+            return SensorPHVoltage
         elif sensor_type == "turbidity": 
             return SensorTurbidity
         elif sensor_type == "nh3": 

@@ -55,3 +55,12 @@ class SensorTDS(Document):
 
     class Settings:
         name = "sensor_tds"
+
+# --- pH Voltage ---
+class SensorPHVoltage(Document):
+    voltage: float
+    device_id: str = "esp32_default"
+    timestamp: datetime = Field(default_factory=now_thai)
+
+    class Settings:
+        name = "sensor_ph_voltage"

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
 # ✅ แก้ตรงนี้: เปลี่ยนจาก .schemas เป็น .model
-from .model import SensorPH, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
+from .model import SensorPH, SensorPHVoltage, SensorTurbidity, SensorNH3, SensorTemperature, SensorTDS
 
 # Import Use Case
 from .use_case import SensorUseCase
@@ -23,6 +23,10 @@ def get_use_case():
 async def add_ph(data: SensorPH, use_case: SensorUseCase = Depends(get_use_case)):
     # ใส่ await เพราะ record_ph เป็น async function
     return await use_case.record_ph(data)
+
+@router.post("/add/ph_voltage")
+async def add_ph_voltage(data: SensorPHVoltage, use_case: SensorUseCase = Depends(get_use_case)):
+    return await use_case.record_ph_voltage(data)
 
 @router.post("/add/turbidity")
 async def add_turbidity(data: SensorTurbidity, use_case: SensorUseCase = Depends(get_use_case)):
