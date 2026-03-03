@@ -1,16 +1,40 @@
-# React + Vite
+# AquaSense - ระบบตรวจสอบและควบคุมคุณภาพน้ำแบบอัจฉริยะ
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AquaSense เป็นแพลตฟอร์มสำหรับตรวจสอบและควบคุมคุณภาพน้ำในการเพาะเลี้ยงสัตว์น้ำแบบเรียลไทม์ เพื่อช่วยให้การจัดการคุณภาพน้ำเป็นเรื่องง่ายและมีประสิทธิภาพแม่นยำ
 
-Currently, two official plugins are available:
+## คุณสมบัติหลัก (Key Features)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **การตรวจวัดคุณภาพน้ำ (Water Quality Monitoring):** ตรวจวัดค่า pH, ความขุ่น (Turbidity), แอมโมเนีย (Ammonia), อุณหภูมิ (Temperature), และค่าสารละลายรวม (TDS)
+*   **การแสดงผลข้อมูล (Data Visualization):** แสดงข้อมูลในรูปแบบกราฟเรียลไทม์และรายงานย้อนหลังเพื่อให้ง่ายต่อการวิเคราะห์
+*   **ระบบควบคุม (Automation Control):**
+    *   ระบบให้อาหารสัตว์น้ำ (Feeding System)
+    *   ระบบปรับค่า pH (pH Adjustment System - pH up/down)
+*   **การจัดการผู้ใช้ (User Management):** ระบบความปลอดภัยและการจัดการสิทธิ์ผู้เล่น/ผู้ดูแลระบบ
 
-## React Compiler
+## เทคโนโลยีที่ใช้ (Tech Stack)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+*   **Frontend:** React (Vite), Tailwind CSS
+*   **Charts:** Recharts
+*   **Icons:** Lucide React
+*   **HTTP Client:** Axios
+*   **Navigation:** React Router DOM
 
-## Expanding the ESLint configuration
+## การเริ่มต้นใช้งาน (Getting Started)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 1. ติดตั้ง Dependencies
+```bash
+npm install
+```
+
+### 2. รันในโหมดพัฒนา (Development Mode)
+```bash
+npm run dev
+```
+
+### 3. สร้างไฟล์สำหรับ Production (Build)
+```bash
+npm run build
+```
+
+---
+

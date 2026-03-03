@@ -6,15 +6,17 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 def get_report_use_case():
     return ReportUseCase()
 
+from typing import Optional
+
 # 1. สรุปยอดวันนี้ (Cards)
 @router.get("/summary/daily")
-async def get_daily_summary(use_case: ReportUseCase = Depends(get_report_use_case)):
-    return await use_case.get_today_summary()
+async def get_daily_summary(date: Optional[str] = None, use_case: ReportUseCase = Depends(get_report_use_case)):
+    return await use_case.get_today_summary(date)
 
 # 2. ตารางวันนี้ (Table)
 @router.get("/table/daily")
-async def get_daily_table(use_case: ReportUseCase = Depends(get_report_use_case)):
-    return await use_case.get_daily_table()
+async def get_daily_table(date: Optional[str] = None, use_case: ReportUseCase = Depends(get_report_use_case)):
+    return await use_case.get_daily_table(date)
 
 # 3. สรุปยอดเดือน (Cards)
 @router.get("/summary/monthly")

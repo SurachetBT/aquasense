@@ -4,9 +4,13 @@ from datetime import datetime
 from pydantic import Field
 from typing import List, Optional
 
-# ฟังก์ชันเวลา (ถ้าใช้)
+from datetime import datetime, timedelta, timezone
+
+# ฟังก์ชันเวลา (ไทย UTC+7)
 def now_thai():
-    return datetime.utcnow()
+    # ใช้ timezone offset สำหรับประเทศไทย
+    tz_thai = timezone(timedelta(hours=7))
+    return datetime.now(tz_thai)
 
 class WaterAnalysisLog(Document):
     """

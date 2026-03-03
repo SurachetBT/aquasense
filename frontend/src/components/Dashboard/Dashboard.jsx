@@ -19,6 +19,7 @@ const Dashboard = () => {
   });
 
   const [summaryType, setSummaryType] = useState('daily');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -94,8 +95,8 @@ const Dashboard = () => {
       const headers = getAuthHeader();
       let url = `${API_BASE_URL}/reports/summary/${summaryType}`;
       if (summaryType === 'monthly') {
-        const now = new Date();
-        url += `?month=${now.getMonth() + 1}&year=${now.getFullYear()}`;
+        const [year, month] = selectedMonth.split('-');
+        url += `?month=${parseInt(month)}&year=${parseInt(year)}`;
       }
       const res = await axios.get(url, { headers });
       setSummaryData(res.data);
@@ -131,7 +132,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchSummary();
-  }, [summaryType]);
+  }, [summaryType, selectedMonth]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans text-slate-800">
@@ -199,6 +200,18 @@ const Dashboard = () => {
               Monthly
             </button>
           </div>
+
+          {summaryType === 'monthly' && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 font-medium">เลือกเดือน:</span>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+              />
+            </div>
+          )}
         </div>
 
         {summaryLoading ? (
@@ -317,8 +330,8 @@ const Dashboard = () => {
           </h3>
           <div className="space-y-4 mb-8">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Water Pumps</p>
-            <PumpSwitch name="Pump 1" isOn={deviceStatus.pump1} onToggle={(state) => handleControl('pump1', state ? 'on' : 'off')} />
-            <PumpSwitch name="Pump 2" isOn={deviceStatus.pump2} onToggle={(state) => handleControl('pump2', state ? 'on' : 'off')} />
+            <PumpSwitch name="Pump 1 น้ำเข้า" isOn={deviceStatus.pump1} onToggle={(state) => handleControl('pump1', state ? 'on' : 'off')} />
+            <PumpSwitch name="Pump 2 น้ำออก" isOn={deviceStatus.pump2} onToggle={(state) => handleControl('pump2', state ? 'on' : 'off')} />
           </div>
           <div className="space-y-4">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Feeders / Servos</p>

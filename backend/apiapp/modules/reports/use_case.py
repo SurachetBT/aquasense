@@ -1,5 +1,6 @@
 import calendar
 from datetime import datetime
+from typing import Optional
 from .repository import ReportRepository 
 
 class ReportUseCase:
@@ -10,10 +11,17 @@ class ReportUseCase:
     # =========================================================
     # 📊 โซนสรุปผล (Cards)
     # =========================================================
-    async def get_today_summary(self):
-        today = datetime.now()
-        start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = today.replace(hour=23, minute=59, second=59, microsecond=999999)
+    async def get_today_summary(self, date_str: Optional[str] = None):
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                target_date = datetime.now()
+        else:
+            target_date = datetime.now()
+
+        start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         logs = await self.repo.get_by_date_range(start_of_day, end_of_day)
 
@@ -91,10 +99,17 @@ class ReportUseCase:
     # =========================================================
     # 📋 โซนตาราง (Tables)
     # =========================================================
-    async def get_daily_table(self):
-        today = datetime.now()
-        start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = today.replace(hour=23, minute=59, second=59, microsecond=999999)
+    async def get_daily_table(self, date_str: Optional[str] = None):
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                target_date = datetime.now()
+        else:
+            target_date = datetime.now()
+
+        start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         logs = await self.repo.get_by_date_range(start_of_day, end_of_day)
 
