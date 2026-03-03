@@ -153,14 +153,14 @@ class SensorUseCase:
             elif nh3 > 0.02: issues.append(f"เริ่มมีแอมโมเนีย ({nh3:.2f})")
 
         if temp is not None:
-            if temp < 20: issues.append(f"น้ำเย็นเกินไป ({temp:.1f}°C)")
-            elif temp > 32: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
+            if temp < 15: issues.append(f"น้ำเย็นเกินไป ({temp:.1f}°C)")
+            elif temp > 30: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
 
         if ntu is not None:
             if ntu > 125: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
 
         if tds is not None:
-            if tds > 700: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
+            if tds > 400: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
 
         # 4. สรุปผล
         status = "Good"
