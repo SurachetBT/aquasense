@@ -1,4 +1,4 @@
-from ...core.exceptions import ItemNotFoundError
+from ...core.exceptions import NotFoundError
 from .model import SystemSettings, LineUser, get_bangkok_time
 from .schema import SystemSettingsRequest, LineUserRequest
 from beanie import PydanticObjectId
@@ -43,14 +43,14 @@ class SettingsUseCase:
     async def delete_line_user(user_id: str):
         user = await LineUser.get(PydanticObjectId(user_id))
         if not user:
-            raise ItemNotFoundError(detail="Line User not found")
+            raise NotFoundError(detail="Line User not found")
         await user.delete()
 
     @staticmethod
     async def toggle_line_user(user_id: str) -> LineUser:
         user = await LineUser.get(PydanticObjectId(user_id))
         if not user:
-            raise ItemNotFoundError(detail="Line User not found")
+            raise NotFoundError(detail="Line User not found")
         user.is_active = not user.is_active
         await user.save()
         return user
