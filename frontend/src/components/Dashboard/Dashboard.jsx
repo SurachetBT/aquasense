@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [deviceStatus, setDeviceStatus] = useState({
     pump1: false, pump2: false, servo1: false, servo2: false, servo3: false
   });
+  const [deviceLoading, setDeviceLoading] = useState({}); // ✅ เพิ่ม state เพื่อเก็บสถานะรอโหลดของแต่ละปุ่ม
 
   const [summaryType, setSummaryType] = useState('daily');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -109,6 +110,8 @@ const Dashboard = () => {
   };
 
   const handleControl = async (device, action) => {
+    // 1. ตั้งค่าสถานะว่ากำลังโหลดอยู่สำหรับ device นี้
+    setDeviceLoading(prev => ({ ...prev, [device]: true }));
     try {
       const headers = getAuthHeader();
       await axios.post(`${API_BASE_URL}/control/${device}/${action}`, {}, { headers });
@@ -116,6 +119,9 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Control failed:", error);
       alert("สั่งงานไม่สำเร็จ ตรวจสอบสิทธิ์ Admin หรือการเชื่อมต่อ Server!");
+    } finally {
+      // 2. ยกเลิกสถานะโหลดเมื่อเสร็จสิ้น
+      setDeviceLoading(prev => ({ ...prev, [device]: false }));
     }
   };
 
@@ -169,8 +175,15 @@ const Dashboard = () => {
       {/* Sensor Cards (Realtime) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SensorCard title="Temperature" value={`${sensors.temperature} °C`} icon={<Thermometer className="text-orange-500" />} color="orange" onClick={() => setSelectedGraph('temperature')} active={selectedGraph === 'temperature'} />
-        <SensorCard title="pH Level" value={sensors.ph} icon={<Droplets className="text-blue-500" />} color="blue" onClick={() => setSelectedGraph('ph')} active={selectedGraph === 'ph'} />
-        <SensorCard title="pH Voltage" value={`${sensors.ph_voltage} V`} icon={<Activity className="text-cyan-500" />} color="emerald" onClick={() => setSelectedGraph('ph_voltage')} active={selectedGraph === 'ph_voltage'} />
+        <SensorCard 
+          title="pH Level" 
+          value={sensors.ph} 
+          subValue={sensors.ph_voltage ? `${sensors.ph_voltage} V` : null}
+          icon={<Droplets className="text-blue-500" />} 
+          color="blue" 
+          onClick={() => setSelectedGraph('ph')} 
+          active={selectedGraph === 'ph'} 
+        />
         <SensorCard title="Turbidity" value={`${sensors.turbidity} NTU`} icon={<Activity className="text-purple-500" />} color="purple" onClick={() => setSelectedGraph('turbidity')} active={selectedGraph === 'turbidity'} />
         <SensorCard title="TDS" value={`${sensors.tds} ppm`} icon={<Activity className="text-emerald-500" />} color="emerald" onClick={() => setSelectedGraph('tds')} active={selectedGraph === 'tds'} />
         <SensorCard title="Ammonia (NH3)" value={`${sensors.nh3} ppm`} icon={<Skull className="text-red-500" />} color="red" onClick={() => setSelectedGraph('nh3')} active={selectedGraph === 'nh3'} />
@@ -287,6 +300,7 @@ const Dashboard = () => {
                     customValue={summaryData.critical_count}
                     unit="ครั้ง"
                     color="red"
+                    onClick={() => navigate('/reports')}
                   />
                 </>
               ) : (
@@ -339,15 +353,34 @@ const Dashboard = () => {
               {[1, 2, 3].map(num => {
                 const deviceName = `servo${num}`;
                 const isOn = deviceStatus[deviceName];
+                const isLoading = deviceLoading[deviceName]; // ดึงสถานะกำลังโหลด
                 const labels = {
                   1: "อาหารปลา",
                   2: "PH down",
                   3: "PH up"
                 };
                 return (
-                  <button key={num} onClick={() => handleControl(deviceName, isOn ? 'off' : 'on')} className={`py-3 rounded-lg font-semibold text-sm transition-all active:scale-95 border ${isOn ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
-                    {labels[num]}
-                    <span className="block text-[10px] font-normal opacity-80">{isOn ? 'ON' : 'OFF'}</span>
+                  <button 
+                    key={num} 
+                    onClick={() => handleControl(deviceName, isOn ? 'off' : 'on')} 
+                    disabled={isLoading} // ปิดการกดระหว่างโหลด
+                    className={`py-3 rounded-lg font-semibold text-sm flex flex-col items-center justify-center transition-all ${
+                      isLoading ? 'opacity-70 cursor-wait' : 'active:scale-95'
+                    } border ${
+                      isOn 
+                        ? 'bg-green-500 text-white border-green-600 hover:bg-green-600' 
+                        : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                    }`}
+                  >
+                    {/* ไอคอนหมุนๆ ตอนโหลด (lucide-react มี class animate-spin) */}
+                    {isLoading ? (
+                      <RefreshCw className="animate-spin mb-1 text-current w-4 h-4 opacity-70" />
+                    ) : (
+                      labels[num]
+                    )}
+                    <span className="block text-[10px] font-normal opacity-80 mt-1">
+                      {isLoading ? 'WAITING...' : (isOn ? 'ON' : 'OFF')}
+                    </span>
                   </button>
                 );
               })}
@@ -370,7 +403,7 @@ const colorMap = {
   emerald: { bg: 'bg-emerald-50', border: 'border-emerald-500', ring: 'ring-emerald-500', label: 'bg-emerald-100 text-emerald-600', text: 'text-emerald-600' },
 };
 
-const SensorCard = ({ title, value, icon, color, onClick, active }) => {
+const SensorCard = ({ title, value, subValue, icon, color, onClick, active }) => {
   const theme = colorMap[color] || colorMap.blue;
   return (
     <div onClick={onClick} className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${active ? `${theme.border} ring-1 ${theme.ring}` : 'border-slate-200'}`}>
@@ -379,19 +412,25 @@ const SensorCard = ({ title, value, icon, color, onClick, active }) => {
         {active && <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${theme.label}`}>Selected</span>}
       </div>
       <h4 className="text-slate-500 text-sm font-medium uppercase">{title}</h4>
-      <p className="text-3xl font-bold text-slate-800 mt-1">{value}</p>
+      <div className="flex items-end gap-2 mt-1">
+        <p className="text-3xl font-bold text-slate-800">{value}</p>
+        {subValue && <p className="text-sm font-medium text-slate-400 mb-1">{subValue}</p>}
+      </div>
     </div>
   );
 };
 
 // ✅ UPDATED: Helper Component ที่รองรับทั้งแบบ Daily (Min/Avg/Max) และ Monthly (Single Value)
-const StatBox = ({ label, data, customValue, unit, color, icon }) => {
+const StatBox = ({ label, data, customValue, unit, color, icon, onClick }) => {
   const theme = colorMap[color] || colorMap.blue;
 
   // กรณีเป็น Custom Value (สำหรับ Monthly เช่น Grade: A)
   if (customValue !== undefined) {
     return (
-      <div className={`p-4 rounded-lg border ${theme.bg} ${theme.border} border-opacity-20 flex flex-col justify-center h-full`}>
+      <div 
+        onClick={onClick}
+        className={`p-4 rounded-lg border ${theme.bg} ${theme.border} border-opacity-20 flex flex-col justify-center h-full transition-all ${onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : ''}`}
+      >
         <div className="flex justify-between items-center mb-1">
           <span className={`font-bold text-sm ${theme.text}`}>{label}</span>
           {icon}
@@ -407,7 +446,10 @@ const StatBox = ({ label, data, customValue, unit, color, icon }) => {
   if (!data) return null;
 
   return (
-    <div className={`p-4 rounded-lg border ${theme.bg} ${theme.border} border-opacity-20`}>
+    <div 
+      onClick={onClick}
+      className={`p-4 rounded-lg border ${theme.bg} ${theme.border} border-opacity-20 transition-all ${onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : ''}`}
+    >
       <div className="flex justify-between items-center mb-2">
         <span className={`font-bold text-sm ${theme.text}`}>{label}</span>
         <span className="text-xs text-slate-500 opacity-70">{unit}</span>
