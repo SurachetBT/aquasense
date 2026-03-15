@@ -38,10 +38,9 @@ async def callback(request: Request):
         reply_text = "ผมยังไม่เข้าใจคำสั่งครับ"
         
         if "สถานะ" in user_msg:
-            # ในอนาคตสามารถเพิ่ม logic ดึงค่าเซ็นเซอร์จริงตรงนี้ได้
             reply_text = "ระบบ AquaSense ทำงานปกติครับ"
         elif "สวัสดี" in user_msg:
-            reply_text = "สวัสดีครับ! ผมคือบอท AquaSense 🐟\n\nหากต้องการรับแจ้งเตือนฉุกเฉิน กรุณาส่ง User ID ด้านบนให้แอดมินลงทะเบียนในระบบนะครับ"
+            reply_text = f"สวัสดีครับ! ผมคือบอท AquaSense 🐟\n\nรหัส User ID ของคุณคือ:\n{event.source.user_id}\n\nกรุณาส่งรหัสนี้ให้แอดมินเพื่อลงทะเบียนรับแจ้งเตือนนะครับ"
 
         line_bot_api.reply_message(
             event.reply_token,
