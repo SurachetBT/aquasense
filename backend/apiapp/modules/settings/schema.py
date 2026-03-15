@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, List
 from datetime import datetime
 from beanie import PydanticObjectId
+from bson import ObjectId
 
 class SystemSettingsRequest(BaseModel):
     line_channel_access_token: Optional[str] = ""
@@ -20,7 +21,7 @@ class LineUserRequest(BaseModel):
     line_user_id: str
 
 class LineRequestSchema(BaseModel):
-    id: PyObjectId = Field(alias="_id")
+    id: PydanticObjectId = Field(alias="_id")
     line_user_id: str
     display_name: Optional[str] = None
     picture_url: Optional[str] = None
