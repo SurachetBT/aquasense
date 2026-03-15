@@ -14,14 +14,14 @@ class SystemSettingsResponse(BaseModel):
     line_channel_secret: Optional[str] = ""
     updated_at: Optional[datetime] = None
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
 class LineUserRequest(BaseModel):
     name: str
     line_user_id: str
 
 class LineRequestSchema(BaseModel):
-    id: PydanticObjectId = Field(alias="_id")
+    id: PydanticObjectId
     line_user_id: str
     display_name: Optional[str] = None
     picture_url: Optional[str] = None
@@ -38,7 +38,8 @@ class LineUserResponse(BaseModel):
     id: PydanticObjectId
     name: str
     line_user_id: str
+    picture_url: Optional[str] = None
     is_active: bool
     created_at: datetime
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
