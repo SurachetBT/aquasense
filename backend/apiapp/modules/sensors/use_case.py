@@ -148,9 +148,9 @@ class SensorUseCase:
             if ph < 6.5: issues.append(f"pH ต่ำเกินไป ({ph:.1f})")
             elif ph > 8.5: issues.append(f"pH สูงเกินไป ({ph:.1f})")
 
-        if nh3 is not None:
-            if nh3 > 0.5: issues.append(f"แอมโมเนียสูงอันตราย ({nh3:.2f})")
-            elif nh3 > 0.02: issues.append(f"เริ่มมีแอมโมเนีย ({nh3:.2f})")
+        # if nh3 is not None:
+        #     if nh3 > 0.5: issues.append(f"แอมโมเนียสูงอันตราย ({nh3:.2f})")
+        #     elif nh3 > 0.02: issues.append(f"เริ่มมีแอมโมเนีย ({nh3:.2f})")
 
         if temp is not None:
             if temp < 15: issues.append(f"น้ำเย็นเกินไป ({temp:.1f}°C)")

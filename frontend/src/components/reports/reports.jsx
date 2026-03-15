@@ -29,6 +29,8 @@ const ReportsPage = () => {
       // ✅ ปรับ Path ให้ตรงตาม API Design ของคุณ
       if (viewMode === 'daily') {
         url = `${API_BASE_URL}/reports/table/daily?date=${selectedDate}`;
+      } else if (viewMode === 'weekly') {
+        url = `${API_BASE_URL}/reports/table/weekly?date=${selectedDate}`;
       } else {
         const [year, month] = selectedMonth.split('-');
         url = `${API_BASE_URL}/reports/table/monthly?month=${parseInt(month)}&year=${parseInt(year)}`;
@@ -122,14 +124,15 @@ const ReportsPage = () => {
         <div className="flex flex-wrap gap-3 w-full md:w-auto items-center justify-end">
           <div className="bg-white p-1 rounded-lg border border-gray-200 flex shadow-sm">
             <button onClick={() => setViewMode('daily')} className={`px-3 py-1.5 text-sm rounded-md transition ${viewMode === 'daily' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>รายวัน</button>
+            <button onClick={() => setViewMode('weekly')} className={`px-3 py-1.5 text-sm rounded-md transition ${viewMode === 'weekly' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>รายสัปดาห์</button>
             <button onClick={() => setViewMode('monthly')} className={`px-3 py-1.5 text-sm rounded-md transition ${viewMode === 'monthly' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>รายเดือน</button>
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            {viewMode === 'daily' ? (
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white" />
-            ) : (
+            {viewMode === 'monthly' ? (
               <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white" />
+            ) : (
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-sm bg-white" title={viewMode === 'weekly' ? "เลือกวันสิ้นสุดสัปดาห์" : ""} />
             )}
           </div>
           <button onClick={fetchReports} className="bg-white text-gray-600 border border-gray-200 p-2 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition shadow-sm"><RefreshCw size={20} /></button>
@@ -165,7 +168,7 @@ const ReportsPage = () => {
                     <th className="p-4 font-medium text-right">หมายเหตุ</th>
                   </tr>
                 ) : (
-                  // 📅 หัวตารางรายเดือน
+                  // 📅/📅 หัวตารางรายเดือน/สัปดาห์
                   <tr>
                     <th className="p-4 font-medium">วันที่</th>
                     <th className="p-4 font-medium">สถานะภาพรวม</th>
@@ -173,6 +176,7 @@ const ReportsPage = () => {
                     <th className="p-4 font-medium">TDS (เฉลี่ย)</th>
                     <th className="p-4 font-medium">NH3 (สูงสุด)</th>
                     <th className="p-4 font-medium">อุณหภูมิ (เฉลี่ย)</th>
+                    <th className="p-4 font-medium">ความขุ่น (NTU)</th>
                     <th className="p-4 font-medium text-right">หมายเหตุ</th>
                   </tr>
                 )}
@@ -221,19 +225,19 @@ const ReportsPage = () => {
                       )}
 
                       {/* ===================================== */}
-                      {/* 📅 กรณีโหมดรายเดือน (Monthly) */}
+                      {/* 📅 กรณีโหมดรายเดือนหรือรายสัปดาห์ (Monthly/Weekly) */}
                       {/* ===================================== */}
-                      {viewMode === 'monthly' && (
+                      {(viewMode === 'monthly' || viewMode === 'weekly') && (
                         <>
                           <td className="p-4 font-medium text-gray-900">{formatDateTime(row.date)}</td>
                           <td className="p-4">{getStatusBadge(row.status)}</td>
                           <td className="p-4">{row.avg_ph !== "-" ? row.avg_ph : '-'}</td>
                           <td className="p-4">{row.avg_tds !== "-" ? row.avg_tds : '-'}</td>
-                          <td className="p-4">{row.avg_turbidity !== "-" ? row.avg_turbidity : '-'}</td>
                           <td className="p-4 text-red-600">{row.max_nh3 !== "-" ? row.max_nh3 : '-'}</td>
                           <td className="p-4 flex items-center gap-1">
                             {row.avg_temp !== "-" ? <><Droplets size={14} className="text-blue-400" /> {row.avg_temp}</> : '-'}
                           </td>
+                          <td className="p-4">{row.avg_turbidity !== "-" ? row.avg_turbidity : '-'}</td>
                           <td className="p-4 text-right text-gray-500 text-xs">
                             {row.note || '-'}
                           </td>
@@ -244,7 +248,7 @@ const ReportsPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={viewMode === 'daily' ? "8" : "7"} className="p-12 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
+                    <td colSpan={viewMode === 'daily' ? "8" : "8"} className="p-12 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
                       <FileText size={48} className="opacity-20" />
                       <span>ไม่พบข้อมูลในช่วงเวลานี้</span>
                     </td>

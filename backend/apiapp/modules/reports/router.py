@@ -27,3 +27,13 @@ async def get_monthly_summary(month: int, year: int, use_case: ReportUseCase = D
 @router.get("/table/monthly")
 async def get_monthly_table(month: int, year: int, use_case: ReportUseCase = Depends(get_report_use_case)):
     return await use_case.get_monthly_table(month, year)
+
+# 5. สรุปยอดรายสัปดาห์ (Cards)
+@router.get("/summary/weekly")
+async def get_weekly_summary(date: Optional[str] = None, use_case: ReportUseCase = Depends(get_report_use_case)):
+    return await use_case.get_weekly_summary(date)
+
+# 6. ตารางรายสัปดาห์ (Table)
+@router.get("/table/weekly")
+async def get_weekly_table(date: Optional[str] = None, use_case: ReportUseCase = Depends(get_report_use_case)):
+    return await use_case.get_weekly_table(date)
