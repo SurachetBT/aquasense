@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardMinus, Droplets, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardMinus, Droplets, LogOut, Settings } from 'lucide-react';
 import Sidebar from './Sidebar';
 
 const Layout = () => {
@@ -12,6 +12,7 @@ const Layout = () => {
     { path: '/dashboard', label: 'หน้าหลัก', icon: LayoutDashboard },
     { path: '/reports', label: 'รายงาน', icon: ClipboardMinus },
     { path: '/users', label: 'ผู้ใช้งาน', icon: Users },
+    { path: '/settings', label: 'ตั้งค่า', icon: Settings },
   ];
 
   // ฟังก์ชันออกจากระบบ

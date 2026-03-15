@@ -2,52 +2,56 @@ from fastapi import APIRouter, Request, HTTPException
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
-from apiapp.core.config import settings
+from apiapp.modules.settings.model import SystemSettings
+from loguru import logger
 
-# สร้าง Router (Prefix คือ /callback แล้ว)
+# สร้าง Router
 router = APIRouter(prefix="/callback", tags=["AquaSense"])
 
-# เตรียมตัวจัดการ LINE
-line_bot_api = LineBotApi(settings.LINE_CHANNEL_ACCESS_TOKEN) # <--- เพิ่มตัวนี้
-handler = WebhookHandler(settings.LINE_CHANNEL_SECRET)
-
-# ✅ แก้ตรงนี้: ใช้ "" พอครับ (เพราะ Prefix มีคำว่า /callback อยู่แล้ว)
 @router.post("")
 async def callback(request: Request):
-    # 1. รับ Signature
+    # 1. ดึงการตั้งค่าล่าสุดจาก DB
+    config = await SystemSettings.find_one()
+    if not config or not config.line_channel_secret:
+        logger.error("❌ LINE Callback failed: No Channel Secret found in Settings.")
+        return "LINE Config Missing"
+
+    # 2. รับ Signature และ Body
     signature = request.headers.get("X-Line-Signature", "")
-    
-    # 2. อ่าน Body
     body = await request.body()
     body_str = body.decode("utf-8")
 
-    # 3. ตรวจสอบความถูกต้อง
+    # 3. เตรียมตัวจัดการ LINE แบบ dynamic
+    line_bot_api = LineBotApi(config.line_channel_access_token)
+    handler = WebhookHandler(config.line_channel_secret)
+
+    # 4. นิยาม Handler ภายใน (เพื่อให้เข้าถึง line_bot_api ตัวปัจจุบัน)
+    @handler.add(MessageEvent, message=TextMessage)
+    def handle_message(event):
+        user_msg = event.message.text.lower()
+        
+        # Print User ID เพื่อให้ Admin เอาไปใส่ในหน้า Settings
+        logger.info(f"------------ 🆔 เจอ USER ID แล้ว! ------------")
+        logger.info(f"User ID: {event.source.user_id}")
+        logger.info(f"----------------------------------------------")
+
+        reply_text = "ผมยังไม่เข้าใจคำสั่งครับ"
+        
+        if "สถานะ" in user_msg:
+            # ในอนาคตสามารถเพิ่ม logic ดึงค่าเซ็นเซอร์จริงตรงนี้ได้
+            reply_text = "ระบบ AquaSense ทำงานปกติครับ"
+        elif "สวัสดี" in user_msg:
+            reply_text = "สวัสดีครับ! ผมคือบอท AquaSense 🐟\n\nหากต้องการรับแจ้งเตือนฉุกเฉิน กรุณาส่ง User ID ด้านบนให้แอดมินลงทะเบียนในระบบนะครับ"
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=reply_text)
+        )
+
+    # 5. ตรวจสอบและประมวลผล
     try:
         handler.handle(body_str, signature)
     except InvalidSignatureError:
         raise HTTPException(status_code=400, detail="Invalid signature")
     
     return "OK"
-
-# --- ส่วนตอบกลับอัตโนมัติ (Auto Reply) ---
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    user_msg = event.message.text.lower()
-    
-    # 🔥 Print User ID ออกมาดู (ตามที่คุณต้องการ)
-    print(f"------------ 🆔 เจอ USER ID แล้ว! ------------")
-    print(f"User ID: {event.source.user_id}")
-    print(f"----------------------------------------------")
-
-    reply_text = "ผมยังไม่เข้าใจคำสั่งครับ"
-    
-    if "สถานะ" in user_msg:
-        reply_text = "ระบบปกติครับ (เดี๋ยวเขียนโค้ดดึงค่าจริงมาใส่)"
-    elif "สวัสดี" in user_msg:
-        reply_text = "สวัสดีครับ! ผมคือบอท AquaSense 🐟"
-
-    # ✅ เพิ่มตรงนี้: สั่งให้บอทตอบกลับไปหาคนส่ง
-    line_bot_api.reply_message(
-        event.reply_token,  # Token สำหรับตอบกลับ (ใช้ได้ครั้งเดียว)
-        TextSendMessage(text=reply_text)
-    )

@@ -182,7 +182,7 @@ class SensorUseCase:
                 if (current_time - SensorUseCase._last_alert_time) > 3600:
                     alert_msg = f"🚨 แจ้งเตือนภัยวิกฤต!\nสถานะ: {message}\n"
                     for issue in issues: alert_msg += f"• {issue}\n"
-                    self.line_service.send_alert(alert_msg)
+                    await self.line_service.send_alert(alert_msg)
                     SensorUseCase._last_alert_time = current_time
             else:
                 status = "Warning"

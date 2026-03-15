@@ -7,6 +7,8 @@ import Dashboard from './components/Dashboard/Dashboard.jsx';
 import UserManagement from './components/UserManagement/UserManagement'; 
 import Layout from './components/bar/Layout';
 import Reports from './components/reports/reports.jsx' 
+import Settings from './components/Settings/Settings.jsx';
+
 function App() {
   return (
     <BrowserRouter>
@@ -19,7 +21,8 @@ function App() {
         {/* 2. กำหนด Path สำหรับหน้าจัดการ User */}
         <Route path="/users" element={<UserManagement />} />
         <Route path="/reports" element={<Reports />} />
-        
+        <Route path="/settings" element={<Settings />} />
+
         {/* ถ้ามีหน้า Dashboard ก็ใส่ไว้แบบนี้ */}
         {<Route path="/dashboard" element={<Dashboard />} />}
        </Route>
