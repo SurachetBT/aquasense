@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings as SettingsIcon, Bell, UserPlus, Trash2, ToggleLeft, ToggleRight, Save, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, UserPlus, Trash2, ToggleLeft, ToggleRight, Save, ShieldCheck, AlertTriangle, Inbox, UserCheck, UserX, MessageSquare, Clock } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -19,6 +19,11 @@ const Settings = () => {
     const [newUser, setNewUser] = useState({ name: '', line_user_id: '' });
     const [userAdding, setUserAdding] = useState(false);
 
+    // LINE Inbox State
+    const [lineRequests, setLineRequests] = useState([]);
+    const [requestsLoading, setRequestsLoading] = useState(false);
+    const [processingId, setProcessingId] = useState(null);
+
     const getAuthHeader = () => {
         const token = localStorage.getItem('accessToken');
         return { Authorization: `Bearer ${token}` };
@@ -28,6 +33,7 @@ const Settings = () => {
     useEffect(() => {
         fetchLineConfig();
         fetchLineUsers();
+        fetchLineRequests();
     }, []);
 
     const fetchLineConfig = async () => {
@@ -97,12 +103,42 @@ const Settings = () => {
         }
     };
 
-    const handleToggleUser = async (id) => {
+    const fetchLineRequests = async () => {
+        setRequestsLoading(true);
         try {
-            const response = await axios.put(`${API_BASE_URL}/settings/line_users/${id}/toggle`, {}, { headers: getAuthHeader() });
-            setLineUsers(lineUsers.map(user => user.id === id ? response.data : user));
+            const response = await axios.get(`${API_BASE_URL}/settings/line_requests`, { headers: getAuthHeader() });
+            setLineRequests(response.data);
         } catch (error) {
-            console.error("Failed to toggle user:", error);
+            console.error("Failed to fetch LINE requests:", error);
+        } finally {
+            setRequestsLoading(false);
+        }
+    };
+
+    const handleApproveRequest = async (requestId) => {
+        setProcessingId(requestId);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/settings/line_requests/${requestId}/approve`, {}, { headers: getAuthHeader() });
+            setLineRequests(lineRequests.filter(r => r.id !== requestId));
+            setLineUsers([...lineUsers, response.data]);
+        } catch (error) {
+            console.error("Failed to approve request:", error);
+            alert("เกิดข้อผิดพลาดในการอนุมัติ");
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleRejectRequest = async (requestId) => {
+        if (!window.confirm("ยืนยันการลบคำขอลงทะเบียนนี้?")) return;
+        setProcessingId(requestId);
+        try {
+            await axios.delete(`${API_BASE_URL}/settings/line_requests/${requestId}/reject`, { headers: getAuthHeader() });
+            setLineRequests(lineRequests.filter(r => r.id !== requestId));
+        } catch (error) {
+            console.error("Failed to reject request:", error);
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -117,6 +153,86 @@ const Settings = () => {
                     <h1 className="text-3xl font-bold text-slate-800">การตั้งค่าระบบ</h1>
                     <p className="text-slate-500 font-medium">จัดการ LINE Notify และรายชื่อผู้รับแจ้งเตือนฉุกเฉิน</p>
                 </div>
+            </div>
+
+            {/* Inbox Section (Line Requests) */}
+            <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <Inbox className="text-blue-500" />
+                        <h2 className="text-2xl font-bold text-slate-800">Inbox (ลูกค้าใหม่)</h2>
+                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                            {lineRequests.length}
+                        </span>
+                    </div>
+                    <p className="text-slate-500 text-sm hidden md:block italic">รายการคนที่ทักมาแต่ยังไม่ได้ลงทะเบียน</p>
+                </div>
+
+                {requestsLoading ? (
+                    <div className="h-48 flex items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                ) : lineRequests.length === 0 ? (
+                    <div className="h-48 flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400">
+                        <MessageSquare size={48} className="mb-2 opacity-20" />
+                        <p className="font-medium">ไม่มีรายการลูกค้าใหม่ในขณะนี้</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {lineRequests.map((req) => (
+                            <div key={req.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all group">
+                                <div className="flex items-start gap-4 mb-4">
+                                    <div className="relative">
+                                        <img 
+                                            src={req.picture_url || 'https://via.placeholder.com/48'} 
+                                            alt={req.display_name} 
+                                            className="w-14 h-14 rounded-full border-2 border-slate-100 object-cover"
+                                        />
+                                        <div className="absolute -bottom-1 -right-1 p-1 bg-green-500 rounded-full border-2 border-white shadow-sm">
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-slate-800 truncate mb-0.5">{req.display_name || 'ลูกค้าไม่มีชื่อ'}</h3>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mb-2">
+                                            <span className="truncate">{req.line_user_id}</span>
+                                        </div>
+                                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 italic text-slate-600 text-xs line-clamp-2">
+                                            "{req.last_message || '...'}"
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                                        <Clock size={12} />
+                                        {new Date(req.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleRejectRequest(req.id)}
+                                            disabled={processingId === req.id}
+                                            className="px-4 py-2 text-slate-500 hover:text-slate-800 text-xs font-bold border border-slate-200 rounded-xl hover:bg-slate-50 transition-all flex items-center gap-1.5"
+                                        >
+                                            <UserX size={14} />
+                                            ลบทิ้ง
+                                        </button>
+                                        <button 
+                                            onClick={() => handleApproveRequest(req.id)}
+                                            disabled={processingId === req.id}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-100 transition-all flex items-center gap-1.5"
+                                        >
+                                            <UserCheck size={14} />
+                                            ลงทะเบียน
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

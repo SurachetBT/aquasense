@@ -19,6 +19,20 @@ class LineUserRequest(BaseModel):
     name: str
     line_user_id: str
 
+class LineRequestSchema(BaseModel):
+    id: PyObjectId = Field(alias="_id")
+    line_user_id: str
+    display_name: Optional[str] = None
+    picture_url: Optional[str] = None
+    last_message: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {ObjectId: str}
+        arbitrary_types_allowed = True
+
 class LineUserResponse(BaseModel):
     id: PydanticObjectId
     name: str
