@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi_pagination import add_pagination
-
+import asyncio
 from .core.router import init_routers
 from .core import http_error, validation_error
 from contextlib import asynccontextmanager
