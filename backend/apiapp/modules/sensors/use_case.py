@@ -38,6 +38,45 @@ class SensorUseCase:
     # ---------------------------------------------------------
     # 🕵️‍♂️ ฟังก์ชันช่วยตัดสินใจ (Helper Function)
     # ---------------------------------------------------------
+    def _determine_water_quality(self, ph, temp, ntu, nh3, tds):
+        issues = [] 
+
+        # 3. ตรวจสอบเงื่อนไข
+        if ph is not None:
+            if ph < 6.5: issues.append(f"pH ต่ำเกินไป ({ph:.1f})")
+            elif ph > 8.5: issues.append(f"pH สูงเกินไป ({ph:.1f})")
+
+        if temp is not None:
+            if temp < 15: issues.append(f"น้ำเย็นเกินไป ({temp:.1f}°C)")
+            elif temp > 30: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
+
+        if ntu is not None:
+            if ntu > 125: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
+
+        if tds is not None:
+            if tds > 400: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
+
+        # 4. สรุปผล
+        status = "Good"
+        color = "green"
+        message = "คุณภาพน้ำปกติ เหมาะแก่การเลี้ยงสัตว์น้ำ"
+
+        if issues:
+            is_critical = any("อันตราย" in msg for msg in issues) or \
+                          any("สูงเกินไป" in msg for msg in issues) or \
+                          any("ต่ำเกินไป" in msg for msg in issues)
+
+            if is_critical:
+                status = "Critical"
+                color = "red"
+                message = "คุณภาพน้ำวิกฤต! กรุณาตรวจสอบทันที"
+            else:
+                status = "Warning"
+                color = "orange"
+                message = "คุณภาพน้ำเริ่มมีปัญหา"
+        
+        return status, color, message, issues
+
     def _should_save(self, sensor_type: str, current_value: float) -> bool:
         now = time.time()
         last_val = self._last_saved_values[sensor_type]
@@ -121,6 +160,55 @@ class SensorUseCase:
     # ---------------------------------------------------------
     # 📊 ส่วนวิเคราะห์และแจ้งเตือน (Analysis) + Snapshot Log
     # ---------------------------------------------------------
+    async def run_hourly_snapshot(self):
+        """
+        บันทึก Snapshot รายชั่วโมงลงฐานข้อมูล
+        """
+        # 1. ดึงค่าล่าสุด
+        ph_data = await self.repo.get_latest("ph")
+        ph_v_data = await self.repo.get_latest("ph_voltage")
+        temp_data = await self.repo.get_latest("temperature")
+        nh3_data = await self.repo.get_latest("nh3")
+        turb_data = await self.repo.get_latest("turbidity")
+        tds_data = await self.repo.get_latest("tds")
+
+        # 2. แปลงค่า
+        ph = ph_data.ph if ph_data else None
+        ph_v = ph_v_data.voltage if ph_v_data else None
+        temp = temp_data.temperature if temp_data else None
+        nh3 = nh3_data.NH3 if nh3_data else None
+        ntu = turb_data.NTU if turb_data else None
+        tds = tds_data.tds if tds_data else None
+
+        if not any([ph, ph_v, temp, nh3, ntu, tds]):
+            print("⚠️ No data available for hourly snapshot")
+            return None
+
+        # 3. วิเคราะห์คุณภาพน้ำ
+        status, color, message, issues = self._determine_water_quality(ph, temp, ntu, nh3, tds)
+
+        # 4. บันทึกลง DB
+        log = WaterAnalysisLog(
+            timestamp=datetime.now(),
+            status=status,
+            issues=issues,
+            ph=ph, ph_voltage=ph_v, turbidity=ntu, nh3=nh3, temperature=temp, tds=tds
+        )
+        await log.save()
+        print(f"📝 บันทึก Snapshot เรียบร้อย (Backend Task): {status}")
+
+        # 5. แจ้งเตือน LINE หากวิกฤต (Cooldown 1 ชม.)
+        if status == "Critical":
+            current_time = time.time()
+            if (current_time - SensorUseCase._last_alert_time) > 3600:
+                alert_msg = f"🚨 แจ้งเตือนภัยวิกฤต (ระบบตรวจพบอัตโนมัติ)!\nสถานะ: {message}\n"
+                for issue in issues: alert_msg += f"• {issue}\n"
+                await self.line_service.send_alert(alert_msg)
+                SensorUseCase._last_alert_time = current_time
+
+        SensorUseCase._last_log_time = time.time()
+        return log
+
     async def analyze_water_quality(self):
         # 1. ดึงค่าล่าสุด
         ph_data = await self.repo.get_latest("ph")
@@ -141,76 +229,26 @@ class SensorUseCase:
         if not any([ph, ph_v, temp, nh3, ntu, tds]):
             return {"status": "No Data", "message": "Waiting...", "color": "gray", "issues": []}
 
-        issues = [] 
+        # 3. วิเคราะห์คุณภาพน้ำ
+        status, color, message, issues = self._determine_water_quality(ph, temp, ntu, nh3, tds)
 
-        # 3. ตรวจสอบเงื่อนไข
-        if ph is not None:
-            if ph < 6.5: issues.append(f"pH ต่ำเกินไป ({ph:.1f})")
-            elif ph > 8.5: issues.append(f"pH สูงเกินไป ({ph:.1f})")
-
-        # if nh3 is not None:
-        #     if nh3 > 0.5: issues.append(f"แอมโมเนียสูงอันตราย ({nh3:.2f})")
-        #     elif nh3 > 0.02: issues.append(f"เริ่มมีแอมโมเนีย ({nh3:.2f})")
-
-        if temp is not None:
-            if temp < 15: issues.append(f"น้ำเย็นเกินไป ({temp:.1f}°C)")
-            elif temp > 30: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
-
-        if ntu is not None:
-            if ntu > 125: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
-
-        if tds is not None:
-            if tds > 400: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
-
-        # 4. สรุปผล
-        status = "Good"
-        color = "green"
-        message = "คุณภาพน้ำปกติ เหมาะแก่การเลี้ยงสัตว์น้ำ"
-
-        if issues:
-            is_critical = any("อันตราย" in msg for msg in issues) or \
-                          any("สูงเกินไป" in msg for msg in issues) or \
-                          any("ต่ำเกินไป" in msg for msg in issues)
-
-            if is_critical:
-                status = "Critical"
-                color = "red"
-                message = "คุณภาพน้ำวิกฤต! กรุณาตรวจสอบทันที"
-
-                # แจ้งเตือน LINE (Cooldown)
-                current_time = time.time()
-                if (current_time - SensorUseCase._last_alert_time) > 3600:
-                    alert_msg = f"🚨 แจ้งเตือนภัยวิกฤต!\nสถานะ: {message}\n"
-                    for issue in issues: alert_msg += f"• {issue}\n"
-                    await self.line_service.send_alert(alert_msg)
-                    SensorUseCase._last_alert_time = current_time
-            else:
-                status = "Warning"
-                color = "orange"
-                message = "คุณภาพน้ำเริ่มมีปัญหา"
+        # 4. แจ้งเตือน LINE (Cooldown) - เฉพาะเมื่อเรียกจาก Dashboard
+        if status == "Critical":
+            current_time = time.time()
+            if (current_time - SensorUseCase._last_alert_time) > 3600:
+                alert_msg = f"🚨 แจ้งเตือนภัยวิกฤต!\nสถานะ: {message}\n"
+                for issue in issues: alert_msg += f"• {issue}\n"
+                await self.line_service.send_alert(alert_msg)
+                SensorUseCase._last_alert_time = current_time
 
         # ---------------------------------------------------------
-        # ✅ ยังต้องเก็บส่วนนี้ไว้! (เพื่อให้ Modules Reports มีข้อมูลไปใช้)
+        # ✅ บันทึก Snapshot หากถึงรอบเวลา
         # ---------------------------------------------------------
         current_ts = time.time()
-        
-        # ถ้าผ่านไป 1 ชั่วโมง (3600 วิ) นับจากครั้งล่าสุด
         if (current_ts - SensorUseCase._last_log_time) > 3600:
-            
-            # สร้างข้อมูล Log ลง DB
-            log = WaterAnalysisLog(
-                timestamp=datetime.now(),
-                status=status,     # สถานะปัจจุบัน
-                issues=issues,     # ปัญหาที่เจอ
-                ph=ph, ph_voltage=ph_v, turbidity=ntu, nh3=nh3, temperature=temp, tds=tds
-            )
-            await log.save() 
-            print(f"📝 บันทึก Snapshot รายชั่วโมงเรียบร้อย: {status}")
-            
-            # อัปเดตเวลาล่าสุด
-            SensorUseCase._last_log_time = current_ts
+            await self.run_hourly_snapshot()
 
         return {
             "status": status, "message": message, "color": color, "issues": issues,
             "current_values": { "ph": ph, "temp": temp, "nh3": nh3, "ntu": ntu, "tds": tds }
-        }
+        }

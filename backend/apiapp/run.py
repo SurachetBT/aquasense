@@ -49,7 +49,30 @@ async def lifespan(app: FastAPI):
     init_routers(app, settings)
     use_route_names_as_operation_ids(app)
     add_pagination(app)
+
+    # Start background logging task
+    import asyncio
+    asyncio.create_task(start_background_logging())
+
     yield
+
+
+async def start_background_logging():
+    """
+    Background task to periodically log water quality data.
+    """
+    from .modules.sensors.use_case import SensorUseCase
+    use_case = SensorUseCase()
+    logger.info("🚀 Background Water Quality Logging Task Started")
+
+    while True:
+        try:
+            # ทุกๆ 1 ชม. (3600 วิ)
+            # ในระหวางพัฒนาปรับเป็น 60 วิ เพื่อทดสอบ
+            await asyncio.sleep(60)
+            await use_case.run_hourly_snapshot()
+        except Exception as e:
+            logger.error(f"❌ Background Logging Error: {e}")
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:
