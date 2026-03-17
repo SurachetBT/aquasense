@@ -11,7 +11,7 @@ import EditUserModal from './EditUserModal';
 
 // ✅ 1. แก้ไขให้ใช้พอร์ต 9090 จาก config ส่วนกลาง
 import { API_BASE_URL as BASE_URL } from '../../config';
-const API_BASE_URL = `${BASE_URL}/v1/users`;
+const API_BASE_URL = `${BASE_URL}/v1/users/`;
 
 const UserManagement = () => {
   // --- States ---
