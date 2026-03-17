@@ -68,8 +68,7 @@ async def start_background_logging():
     while True:
         try:
             # ทุกๆ 1 ชม. (3600 วิ)
-            # ในระหวางพัฒนาปรับเป็น 60 วิ เพื่อทดสอบ
-            await asyncio.sleep(60)
+            await asyncio.sleep(3600)
             await use_case.run_hourly_snapshot()
         except Exception as e:
             logger.error(f"❌ Background Logging Error: {e}")
