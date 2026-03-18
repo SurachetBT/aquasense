@@ -142,6 +142,16 @@ const Settings = () => {
         }
     };
 
+    const handleToggleUser = async (id) => {
+        try {
+            const response = await axios.put(`${API_BASE_URL}/settings/line_users/${id}/toggle`, {}, { headers: getAuthHeader() });
+            setLineUsers(lineUsers.map(user => user.id === id ? response.data : user));
+        } catch (error) {
+            console.error("Failed to toggle user:", error);
+            alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ");
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto space-y-8">
             {/* Header */}
