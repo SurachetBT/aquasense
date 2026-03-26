@@ -23,7 +23,7 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [feedingLogs, setFeedingLogs] = useState([]); // ✅ เก็บประวัติการให้อาหารของวันนี้
+  const [servoLogs, setServoLogs] = useState({ 1: [], 2: [], 3: [] }); // ✅ เก็บประวัติแยกตามอุปกรณ์ (1: อาหาร, 2: pH Down, 3: pH Up)
 
   // --- Helper: Get Auth Header ---
   const getAuthHeader = () => {
@@ -112,13 +112,13 @@ const Dashboard = () => {
       setSummaryLoading(false);
     }
   };
-  const fetchFeedingLogs = async () => {
+  const fetchServoLogs = async (num) => {
     try {
       const headers = getAuthHeader();
-      const res = await axios.get(`${API_BASE_URL}/control/logs/feeding`, { headers });
-      setFeedingLogs(res.data);
+      const res = await axios.get(`${API_BASE_URL}/control/logs/servo${num}`, { headers });
+      setServoLogs(prev => ({ ...prev, [num]: res.data }));
     } catch (error) {
-      console.error("Error fetching feeding logs:", error);
+      console.error(`Error fetching logs for servo${num}:`, error);
     }
   };
 
@@ -129,9 +129,10 @@ const Dashboard = () => {
       const headers = getAuthHeader();
       await axios.post(`${API_BASE_URL}/control/${device}/${action}`, {}, { headers });
       setDeviceStatus(prev => ({ ...prev, [device]: action === 'on' }));
-      // ✅ ถ้าเป็น servo1 (อาหารปลา) และเปิด ให้ดึง log ใหม่
-      if (device === 'servo1' && action === 'on') {
-        fetchFeedingLogs();
+      // ✅ ถ้าเป็น servo (1, 2, 3) และสั่งเปิด ให้ดึง log ใหม่
+      if (device.startsWith('servo') && action === 'on') {
+        const num = device.replace('servo', '');
+        fetchServoLogs(num);
       }
     } catch (error) {
       console.error("Control failed:", error);
@@ -155,7 +156,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchSummary();
-    fetchFeedingLogs();
+    [1, 2, 3].forEach(num => fetchServoLogs(num));
   }, [summaryType, selectedMonth]);
 
   return (
@@ -433,30 +434,67 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* ✅ ส่วนแสดงประวัติการให้อาหาร (NEW) */}
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">ประวัติการให้อาหารวันนี้</p>
-              <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold">{feedingLogs.length} ครั้ง</span>
-            </div>
+          {/* ✅ ส่วนแสดงบันทึกย้อนหลัง (NEW & Expanded) */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-6">
             
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {feedingLogs.length > 0 ? (
-                feedingLogs.map((log, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-100 hover:border-blue-200 transition-colors">
-                    <div className="flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                       <span className="text-slate-600 font-medium">ครั้งที่ {feedingLogs.length - index}</span>
+            {/* 1. ประวัติการให้อาหาร */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">ประวัติการให้อาหารวันนี้</p>
+                <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold">{servoLogs[1].length} ครั้ง</span>
+              </div>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 flex flex-col gap-1">
+                {servoLogs[1].length > 0 ? (
+                  servoLogs[1].map((log, index) => (
+                    <div key={index} className="flex justify-between items-center text-[13px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <span className="text-slate-600 font-medium">ครั้งที่ {servoLogs[1].length - index}</span>
+                      <span className="text-slate-500 font-semibold">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} น.</span>
                     </div>
-                    <span className="text-slate-500 font-semibold">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} น.</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                  <p className="text-xs text-slate-400 italic">ยังไม่มีการให้อาหารในวันนี้</p>
-                </div>
-              )}
+                  ))
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic text-center py-2">ยังไม่มีการให้อาหารวันนี้</p>
+                )}
+              </div>
             </div>
+
+            {/* 2. ประวัติการปรับระดับ PH */}
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">ประวัติการปรับค่า PH</p>
+              <div className="grid grid-cols-2 gap-2">
+                {/* PH Down */}
+                <div className="bg-orange-50/30 p-2.5 rounded-xl border border-orange-100">
+                  <p className="text-[10px] font-bold text-orange-600 mb-2 flex justify-between">
+                    <span>PH DOWN</span>
+                    <span>{servoLogs[2].length}</span>
+                  </p>
+                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                    {servoLogs[2].map((log, index) => (
+                      <div key={index} className="text-[11px] text-slate-500 font-medium bg-white px-1.5 py-0.5 rounded border border-orange-50 mb-1">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    ))}
+                    {servoLogs[2].length === 0 && <span className="text-[10px] text-slate-400 italic">-</span>}
+                  </div>
+                </div>
+
+                {/* PH Up */}
+                <div className="bg-blue-50/30 p-2.5 rounded-xl border border-blue-100">
+                  <p className="text-[10px] font-bold text-blue-600 mb-2 flex justify-between">
+                    <span>PH UP</span>
+                    <span>{servoLogs[3].length}</span>
+                  </p>
+                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                    {servoLogs[3].map((log, index) => (
+                      <div key={index} className="text-[11px] text-slate-500 font-medium bg-white px-1.5 py-0.5 rounded border border-blue-50 mb-1">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    ))}
+                    {servoLogs[3].length === 0 && <span className="text-[10px] text-slate-400 italic">-</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

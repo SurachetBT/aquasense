@@ -20,21 +20,22 @@ async def control_device(
     result = await use_case.execute_command(device_name, action)
     return result
 
-@router.get("/logs/feeding")
-async def get_feeding_logs():
+@router.get("/logs/{device_name}")
+async def get_device_action_logs(device_name: str):
     """
-    ดึงประวัติการให้อาหารปลาของวันนี้
+    ดึงประวัติการสั่งงานอุปกรณ์ของวันนี้ (เช่น servo1, servo2, servo3)
     """
-    from .model import FeedingLog
+    from .model import DeviceActionLog
     from datetime import datetime, time, timedelta
     
     # คำนวณเวลาเริ่มต้นของวันนี้ (เขตเวลาไทย แบบ Naive)
     now = datetime.utcnow() + timedelta(hours=7)
     today_start = datetime.combine(now.date(), time.min)
     
-    # ดึงข้อมูลจาก MongoDB
-    logs = await FeedingLog.find(
-        FeedingLog.timestamp >= today_start
-    ).sort(-FeedingLog.timestamp).to_list()
+    # ดึงข้อมูลจาก MongoDB กรองตามชื่ออุปกรณ์
+    logs = await DeviceActionLog.find(
+        DeviceActionLog.device_name == device_name,
+        DeviceActionLog.timestamp >= today_start
+    ).sort(-DeviceActionLog.timestamp).to_list()
     
     return logs

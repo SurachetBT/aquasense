@@ -47,14 +47,14 @@ class DeviceUseCase:
                 port=settings.MQTT_PORT
             )
             
-            # ✅ 4. บันทึก Log เฉพาะกรณีให้อาหารปลา (servo1) และเป็นคำสั่ง 'on'
-            if device_name == "servo1" and action == "on":
-                from .model import FeedingLog
+            # ✅ 4. บันทึก Log เมื่อมีการสั่ง 'on' สำหรับ servo1, servo2, servo3
+            if device_name in ["servo1", "servo2", "servo3"] and action == "on":
+                from .model import DeviceActionLog
                 try:
-                    await FeedingLog(device_name=device_name, action=action).create()
-                    print(f"📝 Recorded FeedingLog for {device_name}")
+                    await DeviceActionLog(device_name=device_name, action=action).create()
+                    print(f"📝 Recorded DeviceActionLog for {device_name}")
                 except Exception as log_err:
-                    print(f"⚠️ Failed to record FeedingLog: {log_err}")
+                    print(f"⚠️ Failed to record DeviceActionLog: {log_err}")
 
             return {
                 "status": "success", 
