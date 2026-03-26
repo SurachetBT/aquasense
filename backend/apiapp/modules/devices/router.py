@@ -26,12 +26,11 @@ async def get_feeding_logs():
     ดึงประวัติการให้อาหารปลาของวันนี้
     """
     from .model import FeedingLog
-    from datetime import datetime, time, timedelta, timezone
+    from datetime import datetime, time, timedelta
     
-    # คำนวณเวลาเริ่มต้นของวันนี้ (เขตเวลาไทย UTC+7)
-    tz_thai = timezone(timedelta(hours=7))
-    now = datetime.now(tz_thai)
-    today_start = datetime.combine(now.date(), time.min, tzinfo=tz_thai)
+    # คำนวณเวลาเริ่มต้นของวันนี้ (เขตเวลาไทย แบบ Naive)
+    now = datetime.utcnow() + timedelta(hours=7)
+    today_start = datetime.combine(now.date(), time.min)
     
     # ดึงข้อมูลจาก MongoDB
     logs = await FeedingLog.find(
