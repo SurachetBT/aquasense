@@ -59,7 +59,7 @@ const Dashboard = () => {
       ]);
 
       setSensors({
-        temperature: Number(resTemp.data.temperature || 0).toFixed(2),
+        temperature: Number(resTemp.data.temperature || 0),
         ph: Number(resPh.data.ph || 0).toFixed(2),
         ph_voltage: Number(resPhVoltage.data.voltage || 0).toFixed(2),
         turbidity: Number(resTurb.data.NTU || 0).toFixed(2),
