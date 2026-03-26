@@ -3,7 +3,7 @@ from apiapp.core.config import settings
 
 class DeviceUseCase:
     
-    def execute_command(self, device_name: str, action: str):
+    async def execute_command(self, device_name: str, action: str):
         """
         device_name: pump1, pump2, servo1, servo2, servo3
         action: on, off
@@ -47,6 +47,15 @@ class DeviceUseCase:
                 port=settings.MQTT_PORT
             )
             
+            # ✅ 4. บันทึก Log เฉพาะกรณีให้อาหารปลา (servo1) และเป็นคำสั่ง 'on'
+            if device_name == "servo1" and action == "on":
+                from .model import FeedingLog
+                try:
+                    await FeedingLog(device_name=device_name, action=action).create()
+                    print(f"📝 Recorded FeedingLog for {device_name}")
+                except Exception as log_err:
+                    print(f"⚠️ Failed to record FeedingLog: {log_err}")
+
             return {
                 "status": "success", 
                 "message": f"Command '{action}' sent to {device_name}",

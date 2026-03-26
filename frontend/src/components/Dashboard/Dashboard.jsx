@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [feedingLogs, setFeedingLogs] = useState([]); // ✅ เก็บประวัติการให้อาหารของวันนี้
 
   // --- Helper: Get Auth Header ---
   const getAuthHeader = () => {
@@ -111,6 +112,15 @@ const Dashboard = () => {
       setSummaryLoading(false);
     }
   };
+  const fetchFeedingLogs = async () => {
+    try {
+      const headers = getAuthHeader();
+      const res = await axios.get(`${API_BASE_URL}/control/logs/feeding`, { headers });
+      setFeedingLogs(res.data);
+    } catch (error) {
+      console.error("Error fetching feeding logs:", error);
+    }
+  };
 
   const handleControl = async (device, action) => {
     // 1. ตั้งค่าสถานะว่ากำลังโหลดอยู่สำหรับ device นี้
@@ -119,6 +129,10 @@ const Dashboard = () => {
       const headers = getAuthHeader();
       await axios.post(`${API_BASE_URL}/control/${device}/${action}`, {}, { headers });
       setDeviceStatus(prev => ({ ...prev, [device]: action === 'on' }));
+      // ✅ ถ้าเป็น servo1 (อาหารปลา) และเปิด ให้ดึง log ใหม่
+      if (device === 'servo1' && action === 'on') {
+        fetchFeedingLogs();
+      }
     } catch (error) {
       console.error("Control failed:", error);
       alert("สั่งงานไม่สำเร็จ ตรวจสอบสิทธิ์ Admin หรือการเชื่อมต่อ Server!");
@@ -141,6 +155,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchSummary();
+    fetchFeedingLogs();
   }, [summaryType, selectedMonth]);
 
   return (
@@ -415,6 +430,32 @@ const Dashboard = () => {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* ✅ ส่วนแสดงประวัติการให้อาหาร (NEW) */}
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">ประวัติการให้อาหารวันนี้</p>
+              <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold">{feedingLogs.length} ครั้ง</span>
+            </div>
+            
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              {feedingLogs.length > 0 ? (
+                feedingLogs.map((log, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-100 hover:border-blue-200 transition-colors">
+                    <div className="flex items-center gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                       <span className="text-slate-600 font-medium">ครั้งที่ {feedingLogs.length - index}</span>
+                    </div>
+                    <span className="text-slate-500 font-semibold">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} น.</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                  <p className="text-xs text-slate-400 italic">ยังไม่มีการให้อาหารในวันนี้</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
