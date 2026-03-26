@@ -28,7 +28,7 @@ class SensorUseCase:
 
     # 🎯 ตั้งค่าความละเอียด
     THRESHOLDS = {
-        "ph": 0.1, "ph_voltage": 0.01, "turbidity": 5.0, "nh3": 0.05, "temperature": 0.5, "tds": 10.0
+        "ph": 0.1, "ph_voltage": 0.01, "turbidity": 0.4, "nh3": 0.05, "temperature": 0.5, "tds": 10.0
     }
 
     def __init__(self):
@@ -51,7 +51,7 @@ class SensorUseCase:
             elif temp > 30: issues.append(f"น้ำร้อนเกินไป ({temp:.1f}°C)")
 
         if ntu is not None:
-            if ntu > 125: issues.append(f"น้ำขุ่นมาก ({ntu:.1f})")
+            if ntu > 5.0: issues.append(f"น้ำขุ่นมาก ({ntu:.1f} NTU)")
 
         if tds is not None:
             if tds > 400: issues.append(f"ค่า TDS สูงเกินไป ({tds:.1f} ppm)")
@@ -116,6 +116,9 @@ class SensorUseCase:
 
     async def record_turbidity(self, data: SensorTurbidity):
         saved = False
+        # ✅ Scale NTU value: max 125 -> 10.0 (divided by 12.5)
+        data.NTU = data.NTU / 12.5
+        
         if self._should_save("turbidity", data.NTU):
             await self.repo.add_turbidity(data)
             self._update_memory("turbidity", data.NTU)

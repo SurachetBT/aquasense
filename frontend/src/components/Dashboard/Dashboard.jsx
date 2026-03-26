@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Thermometer, Droplets, Activity, Skull, Power, RefreshCw, AlertTriangle, LogOut, BarChart3, CalendarCheck, FileText } from 'lucide-react';
+import { Thermometer, Droplets, Activity, Skull, Power, RefreshCw, AlertTriangle, LogOut, BarChart3, CalendarCheck, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from "../../config";
 
 const Dashboard = () => {
@@ -160,21 +160,50 @@ const Dashboard = () => {
       </header>
 
       {/* System Analysis Banner */}
-      {analysis && (
-        <div className={`mb-6 p-4 rounded-xl border flex items-center gap-4 shadow-sm transition-all ${analysis.status === 'normal' || analysis.status === 'good' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-orange-50 border-orange-200 text-orange-800'}`}>
-          <div className={`p-3 rounded-full ${analysis.status === 'normal' || analysis.status === 'good' ? 'bg-green-100' : 'bg-orange-100'}`}>
-            {analysis.status === 'normal' || analysis.status === 'good' ? <Activity size={24} /> : <AlertTriangle size={24} />}
+      {analysis && (() => {
+        const s = analysis.status?.toLowerCase();
+        let styles = {
+          bg: 'bg-slate-50 border-slate-200 text-slate-800',
+          iconBg: 'bg-slate-100',
+          icon: <Activity size={24} />
+        };
+
+        if (s === 'good' || s === 'normal') {
+          styles = {
+            bg: 'bg-green-50 border-green-200 text-green-800',
+            iconBg: 'bg-green-100',
+            icon: <CheckCircle2 size={24} className="text-green-600" />
+          };
+        } else if (s === 'warning' || s === 'caution') {
+          styles = {
+            bg: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+            iconBg: 'bg-yellow-100',
+            icon: <AlertCircle size={24} className="text-yellow-600" />
+          };
+        } else if (s === 'critical' || s === 'danger') {
+          styles = {
+            bg: 'bg-red-50 border-red-200 text-red-800',
+            iconBg: 'bg-red-100',
+            icon: <AlertTriangle size={24} className="text-red-600" />
+          };
+        }
+
+        return (
+          <div className={`mb-6 p-4 rounded-xl border flex items-center gap-4 shadow-sm transition-all ${styles.bg}`}>
+            <div className={`p-3 rounded-full ${styles.iconBg}`}>
+              {styles.icon}
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">System Analysis</h3>
+              <p className="text-sm font-medium opacity-90">{analysis.message || JSON.stringify(analysis)}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-lg">System Analysis</h3>
-            <p className="text-sm opacity-90">{analysis.message || JSON.stringify(analysis)}</p>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Sensor Cards (Realtime) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <SensorCard title="Temperature" value={`${sensors.temperature} °C`} icon={<Thermometer className="text-orange-500" />} color="orange" onClick={() => setSelectedGraph('temperature')} active={selectedGraph === 'temperature'} />
+        <SensorCard title="Temperature" value={`${sensors.temperature} °C`} icon={<Thermometer className="text-orange-500" />} color="orange" onClick={() => setSelectedGraph('temperature')} active={selectedGraph === 'temperature'} idealRange=" 18-24 °C" />
         <SensorCard 
           title="pH Level" 
           value={sensors.ph} 
@@ -183,12 +212,11 @@ const Dashboard = () => {
           color="blue" 
           onClick={() => setSelectedGraph('ph')} 
           active={selectedGraph === 'ph'} 
+          idealRange="7.0-7.6"
         />
-        <SensorCard title="Turbidity" value={`${sensors.turbidity} NTU`} icon={<Activity className="text-purple-500" />} color="purple" onClick={() => setSelectedGraph('turbidity')} active={selectedGraph === 'turbidity'} />
-        <SensorCard title="TDS" value={`${sensors.tds} ppm`} icon={<Activity className="text-emerald-500" />} color="emerald" onClick={() => setSelectedGraph('tds')} active={selectedGraph === 'tds'} />
-        <SensorCard title="Ammonia (NH3)" value={`${sensors.nh3} ppm`} icon={<Skull className="text-red-500" />} color="red" onClick={() => setSelectedGraph('nh3')} active={selectedGraph === 'nh3'} />
-
-
+        <SensorCard title="Turbidity" value={`${sensors.turbidity} NTU`} icon={<Activity className="text-purple-500" />} color="purple" onClick={() => setSelectedGraph('turbidity')} active={selectedGraph === 'turbidity'} idealRange="น้อยกว่า 5 NTU" />
+        <SensorCard title="TDS" value={`${sensors.tds} ppm`} icon={<Activity className="text-emerald-500" />} color="emerald" onClick={() => setSelectedGraph('tds')} active={selectedGraph === 'tds'} idealRange="น้อยกว่า 400 ppm" />
+        <SensorCard title="Ammonia (NH3)" value={`${sensors.nh3} ppm`} icon={<Skull className="text-red-500" />} color="red" onClick={() => setSelectedGraph('nh3')} active={selectedGraph === 'nh3'} idealRange="น้อยกว่า 0.1 ppm" />
       </div>
 
       {/* ✅ SUMMARY SECTION (FIXED) */}
@@ -403,13 +431,20 @@ const colorMap = {
   emerald: { bg: 'bg-emerald-50', border: 'border-emerald-500', ring: 'ring-emerald-500', label: 'bg-emerald-100 text-emerald-600', text: 'text-emerald-600' },
 };
 
-const SensorCard = ({ title, value, subValue, icon, color, onClick, active }) => {
+const SensorCard = ({ title, value, subValue, icon, color, onClick, active, idealRange }) => {
   const theme = colorMap[color] || colorMap.blue;
   return (
     <div onClick={onClick} className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${active ? `${theme.border} ring-1 ${theme.ring}` : 'border-slate-200'}`}>
       <div className="flex justify-between items-start mb-4">
         <div className={`p-3 rounded-lg ${theme.bg}`}>{icon}</div>
-        {active && <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${theme.label}`}>Selected</span>}
+        <div className="flex flex-col items-end gap-1 text-right">
+          {active && <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${theme.label}`}>Selected</span>}
+          {idealRange && (
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+              เหมาะสม: {idealRange}
+            </span>
+          )}
+        </div>
       </div>
       <h4 className="text-slate-500 text-sm font-medium uppercase">{title}</h4>
       <div className="flex items-end gap-2 mt-1">
