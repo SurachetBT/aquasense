@@ -59,12 +59,12 @@ const Dashboard = () => {
       ]);
 
       setSensors({
-        temperature: resTemp.data.temperature || 0,
-        ph: resPh.data.ph || 0,
-        ph_voltage: resPhVoltage.data.voltage || 0,
-        turbidity: resTurb.data.NTU || 0,
-        nh3: resNh3.data.NH3 || 0,
-        tds: resTds.data.tds || 0
+        temperature: Number(resTemp.data.temperature || 0).toFixed(2),
+        ph: Number(resPh.data.ph || 0).toFixed(2),
+        ph_voltage: Number(resPhVoltage.data.voltage || 0).toFixed(2),
+        turbidity: Number(resTurb.data.NTU || 0).toFixed(2),
+        nh3: Number(resNh3.data.NH3 || 0).toFixed(2),
+        tds: Number(resTds.data.tds || 0).toFixed(2)
       });
 
       setAnalysis(resAnalysis.data);
@@ -80,10 +80,13 @@ const Dashboard = () => {
     try {
       const headers = getAuthHeader();
       const res = await axios.get(`${API_BASE_URL}/sensors/history/${type}?limit=20`, { headers });
-      const formattedData = res.data.map(item => ({
-        time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : (type === 'tds' ? 'tds' : (type === 'ph_voltage' ? 'voltage' : type)))]
-      })).reverse();
+      const formattedData = res.data.map(item => {
+        const rawValue = item[type === 'turbidity' ? 'NTU' : (type === 'nh3' ? 'NH3' : (type === 'tds' ? 'tds' : (type === 'ph_voltage' ? 'voltage' : type)))];
+        return {
+          time: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          value: parseFloat(Number(rawValue || 0).toFixed(2))
+        };
+      }).reverse();
       setHistoryData(formattedData);
     } catch (error) {
       console.error("Error fetching history:", error);
@@ -274,31 +277,31 @@ const Dashboard = () => {
                 <>
                   <StatBox
                     label="อุณหภูมิเฉลี่ย"
-                    customValue={summaryData.statistics.avg_temp ?? '-'}
+                    customValue={Number(summaryData.statistics.avg_temp ?? 0).toFixed(2)}
                     unit="°C"
                     color="orange"
                   />
                   <StatBox
                     label="ค่า pH เฉลี่ย"
-                    customValue={summaryData.statistics.avg_ph ?? '-'}
+                    customValue={Number(summaryData.statistics.avg_ph ?? 0).toFixed(2)}
                     unit=""
                     color="blue"
                   />
                   <StatBox
                     label="ความขุ่นเฉลี่ย"
-                    customValue={summaryData.statistics.avg_turbidity ?? '-'}
+                    customValue={Number(summaryData.statistics.avg_turbidity ?? 0).toFixed(2)}
                     unit="NTU"
                     color="purple"
                   />
                   <StatBox
                     label="แอมโมเนียสูงสุด"
-                    customValue={summaryData.statistics.max_nh3 ?? '-'}
+                    customValue={Number(summaryData.statistics.max_nh3 ?? 0).toFixed(2)}
                     unit="ppm"
                     color="red"
                   />
                   <StatBox
                     label="TDS เฉลี่ย"
-                    customValue={summaryData.statistics.avg_tds ?? '-'}
+                    customValue={Number(summaryData.statistics.avg_tds ?? 0).toFixed(2)}
                     unit="ppm"
                     color="emerald"
                   />
